@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const zlib = require('zlib');
 const { execSync } = require('child_process');
 const { generateManifest } = require('./generate-manifest');
 
@@ -8,149 +7,6 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT_DIR, 'dist-mac');
 const APP_NAME = 'FishTools Studio.app';
 const APP_PATH = path.join(OUT_DIR, APP_NAME);
-
-function findHostFirefoxBundle() {
-  const cachedFf = path.join(ROOT_DIR, '.cache/Firefox.app');
-  const candidates = [
-    '/Applications/Firefox.app',
-    '/Applications/Firefox Developer Edition.app',
-    path.join(process.env.HOME || '', 'Applications/Firefox.app'),
-    '/Applications/Waterfox.app',
-    cachedFf
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(path.join(candidate, 'Contents/MacOS/firefox')) &&
-        fs.existsSync(path.join(candidate, 'Contents/MacOS/XUL'))) {
-      return candidate;
-    }
-  }
-
-  console.log('[macOS Build] Host Firefox.app not found locally; downloading official Mozilla Firefox Universal runtime...');
-  const tmpDmg = '/tmp/ofts_firefox_runtime.dmg';
-  const mntDir = '/tmp/ofts_ff_mnt';
-  fs.mkdirSync(path.dirname(cachedFf), { recursive: true });
-  execSync(`curl -fsSL "https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US" -o "${tmpDmg}"`, { stdio: 'inherit' });
-  try {
-    execSync(`hdiutil detach "${mntDir}" -force 2>/dev/null || true`);
-    fs.mkdirSync(mntDir, { recursive: true });
-    execSync(`hdiutil attach "${tmpDmg}" -nobrowse -readonly -mountpoint "${mntDir}"`, { stdio: 'ignore' });
-    execSync(`ditto "${mntDir}/Firefox.app" "${cachedFf}"`);
-  } finally {
-    execSync(`hdiutil detach "${mntDir}" -force 2>/dev/null || true`);
-    fs.rmSync(tmpDmg, { force: true });
-  }
-  if (fs.existsSync(path.join(cachedFf, 'Contents/MacOS/firefox'))) {
-    return cachedFf;
-  }
-  throw new Error('Failed to obtain Firefox.app runtime bundle.');
-}
-
-/**
- * In-place binary patcher for Stored (uncompressed) entries inside Mozilla omni.ja (mozjar).
- * Preserves exact byte offsets and updates CRC32 in both Central Directory and Local File Header.
- */
-function patchOmniJaBranding(omniJaPath) {
-  if (!fs.existsSync(omniJaPath)) return;
-  const buf = fs.readFileSync(omniJaPath);
-  let patchedCount = 0;
-
-  const targetNames = [
-    'chrome/id/locale/branding/brand.properties',
-    'chrome/en-US/locale/branding/brand.properties',
-    'localization/id/branding/brand.ftl',
-    'localization/en-US/branding/brand.ftl',
-    'chrome/browser/content/branding/about-logo.svg',
-    'chrome/browser/content/branding/about-wordmark.svg',
-    'chrome/browser/content/branding/firefox-wordmark.svg'
-  ];
-
-  function buildPaddedReplacement(entryName, origBuf) {
-    const targetLen = origBuf.length;
-    let content = '';
-    if (entryName.endsWith('brand.properties')) {
-      // Exact 84-byte replacement for brand.properties
-      content = [
-        'brandShorterName = OFTS',
-        'brandShortName = FishTools',
-        'brandFullName = FishTools Studio',
-        ''
-      ].join('\n');
-    } else if (entryName.endsWith('brand.ftl')) {
-      content = [
-        '-brand-shorter-name = FishTools Studio',
-        '-brand-short-name = FishTools Studio',
-        '-brand-shortcut-name = FishTools Studio',
-        '-brand-full-name = FishTools Studio',
-        '-brand-product-name = FishTools Studio',
-        '-vendor-short-name = FishTools',
-        'trademarkInfo = FishTools Studio.'
-      ].join('\n');
-    } else if (entryName.endsWith('.svg')) {
-      content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32"><text x="0" y="24" fill="#aef380" font-family="sans-serif" font-weight="bold" font-size="16">FishTools Studio</text></svg>`;
-    } else {
-      return null;
-    }
-
-    let raw = Buffer.from(content, 'utf8');
-    if (raw.length > targetLen) {
-      raw = raw.subarray(0, targetLen);
-    } else if (raw.length < targetLen) {
-      const diff = targetLen - raw.length;
-      if (entryName.endsWith('.svg')) {
-        const padComment = diff >= 7
-          ? `<!--${' '.repeat(diff - 7)}-->`
-          : ' '.repeat(diff);
-        raw = Buffer.concat([raw, Buffer.from(padComment, 'utf8')]);
-      } else {
-        const padSpaces = ' '.repeat(Math.max(0, diff - 1)) + (diff >= 1 ? '\n' : '');
-        raw = Buffer.concat([raw, Buffer.from(padSpaces, 'utf8')]);
-      }
-    }
-    return raw;
-  }
-
-  for (const entryName of targetNames) {
-    const nameBuf = Buffer.from(entryName, 'utf8');
-    let cdHdr = -1;
-    let lhHdr = -1;
-    let pos = 0;
-    while ((pos = buf.indexOf(nameBuf, pos)) !== -1) {
-      if (pos >= 46 && buf.readUInt32LE(pos - 46) === 0x02014b50) {
-        const nameLen = buf.readUInt16LE(pos - 46 + 28);
-        if (nameLen === nameBuf.length) cdHdr = pos - 46;
-      } else if (pos >= 30 && buf.readUInt32LE(pos - 30) === 0x04034b50) {
-        const nameLen = buf.readUInt16LE(pos - 30 + 26);
-        if (nameLen === nameBuf.length) lhHdr = pos - 30;
-      }
-      pos += nameBuf.length;
-    }
-
-    if (cdHdr !== -1 && lhHdr !== -1) {
-      const method = buf.readUInt16LE(lhHdr + 8);
-      const compSize = buf.readUInt32LE(lhHdr + 18);
-      const uncompSize = buf.readUInt32LE(lhHdr + 22);
-      const nameLen = buf.readUInt16LE(lhHdr + 26);
-      const extraLen = buf.readUInt16LE(lhHdr + 28);
-      if (method === 0 && compSize === uncompSize && compSize > 0) {
-        const dataStart = lhHdr + 30 + nameLen + extraLen;
-        const origSlice = buf.subarray(dataStart, dataStart + compSize);
-        const replacement = buildPaddedReplacement(entryName, origSlice);
-        if (replacement && replacement.length === compSize) {
-          replacement.copy(buf, dataStart);
-          const newCrc = zlib.crc32(replacement) >>> 0;
-          buf.writeUInt32LE(newCrc, lhHdr + 14);
-          buf.writeUInt32LE(newCrc, cdHdr + 16);
-          patchedCount++;
-        }
-      }
-    }
-  }
-
-  if (patchedCount > 0) {
-    fs.writeFileSync(omniJaPath, buf);
-    console.log(`[macOS Build] Patched ${patchedCount} branding resources inside ${path.basename(omniJaPath)}`);
-  }
-}
 
 function buildMacApp() {
   const t0 = Date.now();
@@ -161,46 +17,24 @@ function buildMacApp() {
   const loaderHtml = fs.readFileSync(path.join(ROOT_DIR, 'shell/loader.html'), 'utf8');
   fs.writeFileSync(path.join(ROOT_DIR, 'shell/index.html'), loaderHtml, 'utf8');
 
-  const hostFirefoxApp = findHostFirefoxBundle();
-  console.log(`[macOS Build] Extracting Gecko runtime from: ${hostFirefoxApp}`);
-
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-
-  // 1. Copy base Gecko bundle into FishTools Studio.app
-  execSync(`ditto "${hostFirefoxApp}" "${APP_PATH}"`);
-
   const contentsDir = path.join(APP_PATH, 'Contents');
   const macosDir = path.join(contentsDir, 'MacOS');
   const resourcesDir = path.join(contentsDir, 'Resources');
   const appRuntimeDir = path.join(resourcesDir, 'app');
 
-  // 2. Debloat & strip Firefox browser components, signatures, and telemetry tools
-  const stripPaths = [
-    path.join(contentsDir, '_CodeSignature'),
-    path.join(contentsDir, 'CodeResources'),
-    path.join(contentsDir, 'embedded.provisionprofile'),
-    path.join(contentsDir, 'Library'),
-    path.join(macosDir, 'updater.app'),
-    path.join(macosDir, 'crashreporter.app'),
-    path.join(macosDir, 'crashhelper'),
-    path.join(macosDir, 'pingsender'),
-    path.join(macosDir, 'nmhproxy'),
-    path.join(resourcesDir, 'Assets.car'),
-    path.join(resourcesDir, 'updater.ini'),
-    path.join(resourcesDir, 'firefox.sig'),
-    path.join(resourcesDir, 'XUL.sig')
-  ];
-  for (const p of stripPaths) {
-    fs.rmSync(p, { recursive: true, force: true });
+  fs.mkdirSync(macosDir, { recursive: true });
+  fs.mkdirSync(resourcesDir, { recursive: true });
+  fs.mkdirSync(appRuntimeDir, { recursive: true });
+
+  // 1. Copy FishTools Studio icon & localized InfoPlist.strings so macOS never shows "Firefox"
+  const icnsSrc = path.join(ROOT_DIR, 'icons/icon.icns');
+  if (fs.existsSync(icnsSrc)) {
+    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'icon.icns'));
+    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'firefox.icns'));
+    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'document.icns'));
   }
 
-  // Remove localized *.lproj folders in Resources that override CFBundleName to "Firefox"
-  for (const entry of fs.readdirSync(resourcesDir)) {
-    if (entry.endsWith('.lproj')) {
-      fs.rmSync(path.join(resourcesDir, entry), { recursive: true, force: true });
-    }
-  }
   for (const lang of ['en.lproj', 'id.lproj']) {
     const lprojDir = path.join(resourcesDir, lang);
     fs.mkdirSync(lprojDir, { recursive: true });
@@ -211,78 +45,10 @@ function buildMacApp() {
     );
   }
 
-  // 3. Rename Gecko main binary to fishtools-gecko
-  const origFirefoxBin = path.join(macosDir, 'firefox');
-  const geckoBinPath = path.join(macosDir, 'fishtools-gecko');
-  if (fs.existsSync(origFirefoxBin)) {
-    fs.renameSync(origFirefoxBin, geckoBinPath);
-    fs.chmodSync(geckoBinPath, 0o755);
-  }
-
-  // 4. Replace icons across main bundle and helper bundles
-  const icnsSrc = path.join(ROOT_DIR, 'icons/icon.icns');
-  if (fs.existsSync(icnsSrc)) {
-    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'icon.icns'));
-    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'firefox.icns'));
-    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'document.icns'));
-  }
-
-  for (const helperName of ['plugin-container.app', 'gpu-helper.app', 'media-plugin-helper.app']) {
-    const helperPath = path.join(macosDir, helperName);
-    if (!fs.existsSync(helperPath)) continue;
-    fs.rmSync(path.join(helperPath, 'Contents/_CodeSignature'), { recursive: true, force: true });
-    const helperPlist = path.join(helperPath, 'Contents/Info.plist');
-    if (fs.existsSync(helperPlist)) {
-      try {
-        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleName 'FishTools Studio Helper'" "${helperPlist}" 2>/dev/null || true`);
-        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'FishTools Studio Helper'" "${helperPlist}" 2>/dev/null || true`);
-      } catch (_) {}
-    }
-    const helperRes = path.join(helperPath, 'Contents/Resources');
-    if (fs.existsSync(helperRes) && fs.existsSync(icnsSrc)) {
-      for (const f of fs.readdirSync(helperRes)) {
-        if (f.endsWith('.icns')) {
-          fs.copyFileSync(icnsSrc, path.join(helperRes, f));
-        }
-      }
-    }
-  }
-
-  // 5. Stage FishTools Studio shell into Resources/app/shell
-  fs.mkdirSync(appRuntimeDir, { recursive: true });
+  // 2. Stage FishTools Studio shell
   fs.cpSync(path.join(ROOT_DIR, 'shell'), path.join(appRuntimeDir, 'shell'), { recursive: true });
 
-  // 6. Write rebranded application.ini, enterprise policies, and MPL 2.0 compliance notice
-  const appIniPath = path.join(resourcesDir, 'application.ini');
-  let buildId = '20261016000000';
-  let geckoVer = '158.0';
-  if (fs.existsSync(appIniPath)) {
-    const rawIni = fs.readFileSync(appIniPath, 'utf8');
-    const mBuild = rawIni.match(/BuildID=([0-9]+)/);
-    const mVer = rawIni.match(/Version=([0-9.]+)/);
-    if (mBuild) buildId = mBuild[1];
-    if (mVer) geckoVer = mVer[1];
-  }
-  const rebrandedIni = `[App]
-Vendor=OpenFishTools
-Name=FishTools Studio
-RemotingName=fishtools-studio
-Version=${geckoVer}
-BuildID=${buildId}
-ID={ec8030f7-c20a-464f-9b0e-13a3a9e97384}
-
-[Gecko]
-MinVersion=${geckoVer}
-MaxVersion=${geckoVer}
-
-[XRE]
-EnableProfileMigrator=0
-
-[Crash Reporter]
-Enabled=0
-`;
-  fs.writeFileSync(appIniPath, rebrandedIni, 'utf8');
-
+  // 3. Enterprise policies & MPL 2.0 notice
   const distDir = path.join(resourcesDir, 'distribution');
   fs.mkdirSync(distDir, { recursive: true });
   const policiesJson = {
@@ -314,27 +80,14 @@ Enabled=0
   };
   fs.writeFileSync(path.join(distDir, 'policies.json'), JSON.stringify(policiesJson, null, 2), 'utf8');
 
-  const mplNotice = `FishTools Studio — Third-Party Runtime Notice
-=============================================
-
-This application embeds a modified, standalone build of the Mozilla Gecko / XULRunner
-rendering engine licensed under the Mozilla Public License Version 2.0 (MPL 2.0).
-
-- Source Code License: Mozilla Public License v2.0 (https://www.mozilla.org/MPL/2.0/)
-- Upstream Source Repository: https://hg.mozilla.org/releases/mozilla-release
-
-Trademark Disclaimer:
-FishTools Studio is an independent product developed by OpenFishTools (Cutefish) and is
-not affiliated with, endorsed by, or sponsored by the Mozilla Foundation or Mozilla Corporation.
-All Mozilla and Firefox trademarks, wordmarks, and logos have been removed in accordance with
-the Mozilla Trademark Policy (https://www.mozilla.org/en-US/foundation/trademarks/policy/).
+  const mplNotice = `FishTools Studio — Runtime Notice
+=================================
+FishTools Studio utilizes the Gecko rendering engine under the Mozilla Public License v2.0 (MPL 2.0).
+FishTools Studio is an independent product by OpenFishTools and is not affiliated with the Mozilla Foundation.
 `;
   fs.writeFileSync(path.join(resourcesDir, 'MOZILLA_MPL_NOTICE.txt'), mplNotice, 'utf8');
 
-  // 7. Patch browser/omni.ja branding in-place
-  patchOmniJaBranding(path.join(resourcesDir, 'browser/omni.ja'));
-
-  // 8. Write Contents/Info.plist
+  // 4. Write Contents/Info.plist
   const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -394,16 +147,124 @@ the Mozilla Trademark Policy (https://www.mozilla.org/en-US/foundation/trademark
 </plist>`;
   fs.writeFileSync(path.join(contentsDir, 'Info.plist'), infoPlist, 'utf8');
 
-  // 9. Write gecko-launcher.sh (prepares profile/runtime and launches embedded fishtools-gecko)
+  // 5. Write entitlements.plist inside Resources so gecko-launcher.sh can sign the 174KB fishtools-gecko stub on the fly
+  const entitlementsXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+  <key>com.apple.security.automation.apple-events</key>
+  <true/>
+</dict>
+</plist>`;
+  const bundledEntitlementsPath = path.join(resourcesDir, 'entitlements.plist');
+  fs.writeFileSync(bundledEntitlementsPath, entitlementsXml, 'utf8');
+
+  // 6. Write gecko-launcher.sh
+  // Uses Zero-Copy Symlink Skinning: keeps DMG at ~15 MB while running Gecko inside FishTools Studio.app
+  // so macOS Dock & Top-Left Menu Bar are 100% "FishTools Studio" (never Firefox).
   const launcherSh = `#!/bin/bash
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUNDLE_SHELL="$(cd "$SCRIPT_DIR/../Resources/app/shell" && pwd)"
+BUNDLE_CONTENTS="$(cd "$SCRIPT_DIR/.." && pwd)"
+BUNDLE_RES="$BUNDLE_CONTENTS/Resources"
+BUNDLE_SHELL="$BUNDLE_RES/app/shell"
 APP_DATA_DIR="$HOME/Library/Caches/com.cutefishaep.ofts"
 RUNTIME_DIR="$APP_DATA_DIR/runtime"
 PROFILE_DIR="$APP_DATA_DIR/gecko-profile"
 mkdir -p "$PROFILE_DIR/chrome"
+
+# Locate host Gecko engine
+FF_APP=""
+for candidate in \\
+  "/Applications/Firefox.app" \\
+  "/Applications/Firefox Developer Edition.app" \\
+  "$HOME/Applications/Firefox.app" \\
+  "/Applications/Waterfox.app" \\
+  "/Applications/Zen Browser.app"; do
+  if [ -f "$candidate/Contents/MacOS/XUL" ]; then
+    FF_APP="$candidate"
+    break
+  fi
+done
+
+if [ -z "$FF_APP" ]; then
+  osascript -e 'display alert "Gecko Runtime Required" message "Please install Firefox in /Applications to provide the Gecko WebRender engine for FishTools Studio."'
+  exit 1
+fi
+
+FF_MACOS="$FF_APP/Contents/MacOS"
+FF_RES="$FF_APP/Contents/Resources"
+
+# Determine target bundle for Zero-Copy Symlink Skinning
+# If FishTools Studio.app is writable (e.g. in /Applications), link directly inside it so Dock pinning works natively.
+# Otherwise (e.g. launched directly from read-only mounted DMG), assemble a 180KB skinned bundle in APP_DATA_DIR.
+TARGET_APP="$(cd "$BUNDLE_CONTENTS/.." && pwd)"
+if [ ! -w "$SCRIPT_DIR" ]; then
+  TARGET_APP="$APP_DATA_DIR/FishTools Studio.app"
+  mkdir -p "$TARGET_APP/Contents/MacOS" "$TARGET_APP/Contents/Resources"
+  cp -f "$BUNDLE_CONTENTS/Info.plist" "$TARGET_APP/Contents/Info.plist"
+  cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/icon.icns" 2>/dev/null || true
+  cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/firefox.icns" 2>/dev/null || true
+  cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/document.icns" 2>/dev/null || true
+  cp -Rf "$BUNDLE_RES/en.lproj" "$BUNDLE_RES/id.lproj" "$BUNDLE_RES/distribution" "$TARGET_APP/Contents/Resources/" 2>/dev/null || true
+  cp -f "$SCRIPT_DIR/libfishtools_bridge.dylib" "$TARGET_APP/Contents/MacOS/libfishtools_bridge.dylib"
+fi
+
+T_MACOS="$TARGET_APP/Contents/MacOS"
+T_RES="$TARGET_APP/Contents/Resources"
+
+if [ -d "$FF_APP/Contents/Frameworks" ]; then
+  ln -sfn "$FF_APP/Contents/Frameworks" "$TARGET_APP/Contents/Frameworks"
+fi
+
+# Symlink Gecko dylibs, XUL, and helpers (excluding updater/crashreporter)
+for item in "$FF_MACOS"/*; do
+  base="\$(basename "\$item")"
+  case "\$base" in
+    firefox|fishtools-studio|fishtools-gecko|libfishtools_bridge.dylib|window-watchdog|gecko-launcher.sh|updater.app|crashreporter.app|crashhelper|pingsender|nmhproxy)
+      continue
+      ;;
+  esac
+  ln -sfn "\$item" "\$T_MACOS/\$base"
+done
+
+# Symlink Gecko Resources (excluding Assets.car, firefox.icns, *.lproj so Firefox branding never leaks)
+for item in "$FF_RES"/*; do
+  base="\$(basename "\$item")"
+  case "\$base" in
+    Assets.car|firefox.icns|document.icns|icon.icns|updater.ini|*.lproj|*.sig|distribution|app|entitlements.plist|MOZILLA_MPL_NOTICE.txt)
+      continue
+      ;;
+  esac
+  ln -sfn "\$item" "\$T_RES/\$base"
+done
+
+# Copy & sign the 174KB Gecko stub binary as fishtools-gecko if missing or updated
+FF_MAIN_BIN="$FF_MACOS/firefox"
+if [ ! -f "\$FF_MAIN_BIN" ]; then
+  for b in "$FF_MACOS/waterfox" "$FF_MACOS/zen"; do
+    if [ -f "\$b" ]; then FF_MAIN_BIN="\$b"; break; fi
+  done
+fi
+
+GECKO_BIN="\$T_MACOS/fishtools-gecko"
+if [ ! -f "\$GECKO_BIN" ] || ! cmp -s "\$FF_MAIN_BIN" "\$GECKO_BIN.orig" 2>/dev/null; then
+  cp -f "\$FF_MAIN_BIN" "\$GECKO_BIN.orig"
+  cp -f "\$FF_MAIN_BIN" "\$GECKO_BIN"
+  chmod 755 "\$GECKO_BIN"
+  /usr/bin/codesign --force --sign - --entitlements "$BUNDLE_RES/entitlements.plist" "\$GECKO_BIN" 2>/dev/null || true
+fi
+printf '%s' "\$GECKO_BIN" > "$APP_DATA_DIR/gecko_bin.path"
+printf '%s' "\$T_MACOS/libfishtools_bridge.dylib" > "$APP_DATA_DIR/bridge_dylib.path"
 
 apply_studio_patches() {
   local TARGET_STUDIO="\$1"
@@ -650,24 +511,21 @@ export MOZ_DISABLE_GPU_SANDBOX=1
 export MOZ_DISABLE_RDD_SANDBOX=1
 export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1
 export JSGC_DISABLE_POISONING=1
-export DYLD_INSERT_LIBRARIES="\$SCRIPT_DIR/libfishtools_bridge.dylib"
+export DYLD_INSERT_LIBRARIES="\$T_MACOS/libfishtools_bridge.dylib"
 
-GECKO_BIN="\$SCRIPT_DIR/fishtools-gecko"
 "\$GECKO_BIN" --no-remote -profile "$PROFILE_DIR" "\$LOADER_URL" &
 FF_PID=\$!
 echo "\$FF_PID" > "$APP_DATA_DIR/ff.pid"
 
 if [ "\$MODE_FLAG" != "--managed-by-cocoa" ]; then
-  "\$SCRIPT_DIR/window-watchdog" "\$FF_PID"
+  "$SCRIPT_DIR/window-watchdog" "\$FF_PID"
 fi
 `;
 
   const launcherShPath = path.join(macosDir, 'gecko-launcher.sh');
   fs.writeFileSync(launcherShPath, launcherSh, { mode: 0o755 });
 
-  // 10. Compile Native Cocoa Bridge Dylib (libfishtools_bridge.dylib)
-  // Sanitizes macOS Menu Bar (removes History/Bookmarks/Tools/Help, renames Firefox -> FishTools Studio)
-  // and handles in-process Apple Event deep links (ofts://, fishtools://).
+  // 7. Compile Native Cocoa Bridge Dylib (libfishtools_bridge.dylib)
   const bridgeObjcSource = `
 #import <Cocoa/Cocoa.h>
 #include <stdlib.h>
@@ -679,7 +537,6 @@ fi
 @implementation FishToolsCocoaBridge
 
 + (void)load {
-    // Prevent child helper processes (plugin-container, gpu-helper) from inheriting this dylib
     unsetenv("DYLD_INSERT_LIBRARIES");
 
     NSString *procName = [[NSProcessInfo processInfo] processName];
@@ -776,7 +633,6 @@ fi
 }
 
 - (void)sanitizeMenuAndWindows {
-    // 1. Ensure application icon is FishTools Studio icon.icns
     static BOOL iconSet = NO;
     if (!iconSet && NSApp) {
         NSString *icnsPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"icon.icns"];
@@ -789,7 +645,6 @@ fi
         }
     }
 
-    // 2. Sanitize macOS Top-Left Menu Bar
     NSMenu *mainMenu = [NSApp mainMenu];
     if (mainMenu && mainMenu.numberOfItems > 0) {
         NSMenuItem *appItem = [mainMenu itemAtIndex:0];
@@ -822,7 +677,6 @@ fi
         }
     }
 
-    // 3. Sanitize Window Titles
     for (NSWindow *win in [NSApp windows]) {
         NSString *wTitle = win.title;
         if (wTitle && ([wTitle rangeOfString:@"Firefox"].location != NSNotFound)) {
@@ -845,7 +699,7 @@ fi
   fs.unlinkSync(bridgeMPath);
   fs.chmodSync(bridgeDylibPath, 0o755);
 
-  // 11. Compile Window Watchdog
+  // 8. Compile Window Watchdog
   const watchdogSource = `
 #include <ApplicationServices/ApplicationServices.h>
 #include <unistd.h>
@@ -914,9 +768,7 @@ int main(int argc, char *argv[]) {
   fs.unlinkSync(watchdogCPath);
   fs.chmodSync(watchdogBinPath, 0o755);
 
-  // 12. Compile Main Executable (Contents/MacOS/fishtools-studio)
-  // Prepares the profile via gecko-launcher.sh --prepare-only, spawns window-watchdog,
-  // and execv()'s Contents/MacOS/fishtools-gecko in-place so the PID and bundle stay unified.
+  // 9. Compile Main Executable (Contents/MacOS/fishtools-studio)
   const objcSource = `
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
@@ -962,7 +814,6 @@ int main(int argc, char *argv[]) {
             write_deeplink_files(incomingUrl, rtDir);
         }
 
-        // Check if an instance is already running
         NSString *pidStr = [NSString stringWithContentsOfFile:pidFile encoding:NSUTF8StringEncoding error:nil];
         if (pidStr) {
             pid_t existingPid = (pid_t)[pidStr intValue];
@@ -982,18 +833,29 @@ int main(int argc, char *argv[]) {
         }
         NSString *macosDir = [[NSString stringWithUTF8String:exe_path] stringByDeletingLastPathComponent];
         NSString *scriptPath = [macosDir stringByAppendingPathComponent:@"gecko-launcher.sh"];
-        NSString *geckoBin = [macosDir stringByAppendingPathComponent:@"fishtools-gecko"];
-        NSString *bridgeDylib = [macosDir stringByAppendingPathComponent:@"libfishtools_bridge.dylib"];
         NSString *watchdogBin = [macosDir stringByAppendingPathComponent:@"window-watchdog"];
 
-        // Run gecko-launcher.sh --prepare-only synchronously
         NSTask *prepTask = [[NSTask alloc] init];
         [prepTask setLaunchPath:@"/bin/bash"];
         [prepTask setArguments:@[scriptPath, incomingUrl, @"--prepare-only"]];
         @try {
             [prepTask launch];
             [prepTask waitUntilExit];
-        } @catch (NSException *e) {}
+            if ([prepTask terminationStatus] != 0) {
+                return 1;
+            }
+        } @catch (NSException *e) {
+            return 1;
+        }
+
+        NSString *geckoBin = [NSString stringWithContentsOfFile:[appDataDir stringByAppendingPathComponent:@"gecko_bin.path"] encoding:NSUTF8StringEncoding error:nil];
+        NSString *bridgeDylib = [NSString stringWithContentsOfFile:[appDataDir stringByAppendingPathComponent:@"bridge_dylib.path"] encoding:NSUTF8StringEncoding error:nil];
+        if (!geckoBin || geckoBin.length == 0) {
+            geckoBin = [macosDir stringByAppendingPathComponent:@"fishtools-gecko"];
+        }
+        if (!bridgeDylib || bridgeDylib.length == 0) {
+            bridgeDylib = [macosDir stringByAppendingPathComponent:@"libfishtools_bridge.dylib"];
+        }
 
         NSString *loaderUrlFile = [appDataDir stringByAppendingPathComponent:@"loader.url"];
         NSString *loaderUrl = [NSString stringWithContentsOfFile:loaderUrlFile encoding:NSUTF8StringEncoding error:nil];
@@ -1001,11 +863,9 @@ int main(int argc, char *argv[]) {
             loaderUrl = [NSString stringWithFormat:@"file://%@/loader.html", [rtDir stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
         }
 
-        // Record our PID (preserved across execv)
         pid_t selfPid = getpid();
         [[NSString stringWithFormat:@"%d\\n", selfPid] writeToFile:pidFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-        // Spawn window-watchdog in background watching our PID
         pid_t child = fork();
         if (child == 0) {
             setsid();
@@ -1014,7 +874,6 @@ int main(int argc, char *argv[]) {
             _exit(0);
         }
 
-        // Configure Gecko & WebRender environment variables
         setenv("MOZ_WEBRENDER", "1", 1);
         setenv("MOZ_ACCELERATED", "1", 1);
         setenv("MOZ_DISABLE_CONTENT_SANDBOX", "1", 1);
@@ -1050,52 +909,18 @@ int main(int argc, char *argv[]) {
   fs.unlinkSync(objcFilePath);
   fs.chmodSync(binPath, 0o755);
 
-  // 13. Deep Ad-Hoc Code Signing with JIT, Unsigned Executable Memory & DYLD Entitlements
+  // 10. Ad-Hoc Code Signing
   const entitlementsPath = path.join(OUT_DIR, 'entitlements.plist');
-  const entitlementsXml = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  <true/>
-  <key>com.apple.security.cs.disable-library-validation</key>
-  <true/>
-  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-  <true/>
-  <key>com.apple.security.automation.apple-events</key>
-  <true/>
-</dict>
-</plist>`;
   fs.writeFileSync(entitlementsPath, entitlementsXml, 'utf8');
   execSync(`xattr -cr "${APP_PATH}" 2>/dev/null || true`);
-
-  // Sign all dylibs and executables in MacOS/
-  for (const item of fs.readdirSync(macosDir)) {
-    const full = path.join(macosDir, item);
-    if (item.endsWith('.dylib')) {
-      execSync(`/usr/bin/codesign --force --sign - "${full}"`);
-    }
-  }
-  if (fs.existsSync(path.join(macosDir, 'XUL'))) {
-    execSync(`/usr/bin/codesign --force --sign - "${path.join(macosDir, 'XUL')}"`);
-  }
-  for (const helperName of ['plugin-container.app', 'gpu-helper.app', 'media-plugin-helper.app']) {
-    const helperPath = path.join(macosDir, helperName);
-    if (fs.existsSync(helperPath)) {
-      execSync(`/usr/bin/codesign --force --deep --sign - --entitlements "${entitlementsPath}" "${helperPath}"`);
-    }
-  }
   execSync(`/usr/bin/codesign --force --sign - "${launcherShPath}"`);
   execSync(`/usr/bin/codesign --force --sign - "${bridgeDylibPath}"`);
   execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${watchdogBinPath}"`);
-  execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${geckoBinPath}"`);
   execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${binPath}"`);
   execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${APP_PATH}"`);
   fs.unlinkSync(entitlementsPath);
 
-  // 14. Package into compressed UDZO .dmg with /Applications shortcut
+  // 11. Package into compressed UDZO .dmg (~15 MB)
   const dmgStageDir = path.join(OUT_DIR, '.dmg-stage');
   fs.rmSync(dmgStageDir, { recursive: true, force: true });
   fs.mkdirSync(dmgStageDir, { recursive: true });
