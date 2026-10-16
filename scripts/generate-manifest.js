@@ -84,11 +84,6 @@ function generateManifest() {
   const studioRoot = resolveStudioDir();
 
   let version = '1.0.1';
-  const versionPath = path.join(studioRoot, 'version.json');
-  if (fs.existsSync(versionPath)) {
-    const parsed = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
-    if (parsed && parsed.version) version = parsed.version;
-  }
   const pkgPath = path.join(STANDALONE_ROOT, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
