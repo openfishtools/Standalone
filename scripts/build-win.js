@@ -690,9 +690,17 @@ __declspec(dllimport) LONG __stdcall RegSetValueExW(HANDLE hKey, const WCHAR* lp
 __declspec(dllimport) LONG __stdcall RegCloseKey(HANDLE hKey);
 __declspec(dllimport) LONG __stdcall RegDeleteTreeW(HANDLE hKey, const WCHAR* lpSubKey);
 
-static int wlen(const WCHAR* s) {
-    int n = 0;
-    while (s[n]) n++;
+ULONG_PTR wcslen(const WCHAR* s) {
+    const volatile WCHAR* p = s;
+    ULONG_PTR n = 0;
+    while (p[n]) n++;
+    return n;
+}
+
+ULONG_PTR strlen(const char* s) {
+    const volatile char* p = s;
+    ULONG_PTR n = 0;
+    while (p[n]) n++;
     return n;
 }
 
@@ -702,8 +710,34 @@ void* memset(void* dest, int c, ULONG_PTR count) {
     return dest;
 }
 
+void* memcpy(void* dest, const void* src, ULONG_PTR count) {
+    volatile unsigned char* d = (volatile unsigned char*)dest;
+    const volatile unsigned char* s = (const volatile unsigned char*)src;
+    while (count--) *d++ = *s++;
+    return dest;
+}
+
+void* memmove(void* dest, const void* src, ULONG_PTR count) {
+    volatile unsigned char* d = (volatile unsigned char*)dest;
+    const volatile unsigned char* s = (const volatile unsigned char*)src;
+    if (d < s) {
+        while (count--) *d++ = *s++;
+    } else if (d > s) {
+        d += count;
+        s += count;
+        while (count--) *--d = *--s;
+    }
+    return dest;
+}
+
+static int wlen(const WCHAR* s) {
+    return (int)wcslen(s);
+}
+
 static void wcpy(WCHAR* dst, const WCHAR* src) {
-    while ((*dst++ = *src++));
+    volatile WCHAR* d = dst;
+    const volatile WCHAR* s = src;
+    while ((*d++ = *s++));
 }
 
 static void wcat(WCHAR* dst, const WCHAR* src) {
@@ -1090,7 +1124,7 @@ void mainCRTStartup(void) {
   const exePath = path.join(PORTABLE_DIR, 'FishTools Studio.exe');
 
   fs.writeFileSync(launcherCPath, winLauncherSource, 'utf8');
-  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -fno-stack-protector -mno-stack-arg-probe -c "${launcherCPath}" -o "${launcherObjPath}"`);
+  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -c "${launcherCPath}" -o "${launcherObjPath}"`);
   execSync(
     `"${lldLink}" /subsystem:windows /entry:mainCRTStartup /out:"${exePath}" "${launcherObjPath}" "${kernel32LibPath}" "${user32LibPath}" "${advapi32LibPath}" "${launcherResPath}"`,
     { env }
@@ -1214,7 +1248,7 @@ void mainCRTStartup(void) {
   const uninstExePath = path.join(PORTABLE_DIR, 'Uninstall FishTools Studio.exe');
 
   fs.writeFileSync(uninstCPath, winUninstallerSource, 'utf8');
-  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -fno-stack-protector -mno-stack-arg-probe -c "${uninstCPath}" -o "${uninstObjPath}"`);
+  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -c "${uninstCPath}" -o "${uninstObjPath}"`);
   execSync(
     `"${lldLink}" /subsystem:windows /entry:mainCRTStartup /out:"${uninstExePath}" "${uninstObjPath}" "${kernel32LibPath}" "${user32LibPath}" "${advapi32LibPath}" "${uninstResPath}"`,
     { env }
@@ -1386,7 +1420,7 @@ void mainCRTStartup(void) {
   const standaloneExeCopy = path.join(OUT_DIR, `FishTools_Studio_${manifest.version}_Windows_x64.exe`);
 
   fs.writeFileSync(setupCPath, winSetupSource, 'utf8');
-  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -fno-stack-protector -mno-stack-arg-probe -c "${setupCPath}" -o "${setupObjPath}"`);
+  execSync(`clang -O2 --target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -fno-stack-protector -mno-stack-arg-probe -c "${setupCPath}" -o "${setupObjPath}"`);
   execSync(
     `"${lldLink}" /subsystem:windows /entry:mainCRTStartup /out:"${setupExePath}" "${setupObjPath}" "${kernel32LibPath}" "${user32LibPath}" "${advapi32LibPath}" "${setupResPath}"`,
     { env }
