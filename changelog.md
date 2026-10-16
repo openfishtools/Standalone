@@ -1,8 +1,8 @@
 # Changelog
 
 ## [1.0.2] - 2026-10-16
-- Embedded stripped and rebranded Gecko runtime directly inside `FishTools Studio.app` on macOS (zero external Firefox dependency).
-- Rebranded macOS bundle (`CFBundleName`, `Info.plist`, `application.ini`, `omni.ja` branding, and app icon) and sanitized top-left macOS menu bar via native Cocoa bridge (`libfishtools_bridge.dylib`).
+- Implemented Zero-Copy Skinned Gecko Runtime on macOS (`fishtools-gecko` + `libfishtools_bridge.dylib`) and Windows (`gecko-engine\FishTools Studio.exe` hardlink skinning + `WM_SETICON` & `SetWindowTextW` override) while keeping installers ultra-lightweight (~15 MB macOS, ~13 MB Windows).
+- Stripped Firefox branding (`Assets.car`, `*.lproj`, titlebar suffixes, menu bar items, updater, telemetry, and crashreporter) and injected Enterprise Policies (`distribution/policies.json`).
 - Included `MOZILLA_MPL_NOTICE.txt` for Mozilla Public License 2.0 & Trademark compliance.
 - Moved Local Storage Durability to Settings and added Factory Reset ("Reset") action in Studio.
 

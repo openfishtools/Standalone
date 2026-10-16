@@ -339,6 +339,7 @@ function buildFirefoxWindowsExe() {
   const kernel32Def = `LIBRARY KERNEL32.dll
 EXPORTS
 GetModuleFileNameW
+GetModuleHandleW
 GetCommandLineW
 GetEnvironmentVariableW
 SetEnvironmentVariableW
@@ -350,6 +351,7 @@ CreateFileW
 WriteFile
 DeleteFileW
 CopyFileW
+CreateHardLinkW
 FindFirstFileW
 FindNextFileW
 FindClose
@@ -377,6 +379,8 @@ GetWindowRect
 GetWindowTextW
 SetWindowTextW
 SetForegroundWindow
+LoadIconW
+SendMessageW
 `;
 
   const advapi32Def = `LIBRARY ADVAPI32.dll
@@ -406,7 +410,7 @@ RegDeleteTreeW
   const icoPath = path.join(EXP_ROOT, 'icons/icon.ico');
 
   const userChromeCss = `@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
-#navigator-toolbox, #TabsToolbar, #nav-bar, #PersonalToolbar, #sidebar-box, #sidebar-splitter, #statuspanel {
+#navigator-toolbox, #TabsToolbar, #titlebar, #toolbar-menubar, #main-menubar, #nav-bar, #PersonalToolbar, #sidebar-box, #sidebar-splitter, #statuspanel {
   visibility: collapse !important;
   display: none !important;
   height: 0 !important;
@@ -666,6 +670,7 @@ typedef struct _RECT {
 
 typedef BOOL (__stdcall *WNDENUMPROC)(HWND, ULONG_PTR);
 
+__declspec(dllimport) HANDLE __stdcall GetModuleHandleW(const WCHAR* lpModuleName);
 __declspec(dllimport) DWORD __stdcall GetModuleFileNameW(HANDLE hModule, WCHAR* lpFilename, DWORD nSize);
 __declspec(dllimport) WCHAR* __stdcall GetCommandLineW(void);
 __declspec(dllimport) DWORD __stdcall GetEnvironmentVariableW(const WCHAR* lpName, WCHAR* lpBuffer, DWORD nSize);
@@ -678,6 +683,7 @@ __declspec(dllimport) HANDLE __stdcall CreateFileW(const WCHAR* lpFileName, DWOR
 __declspec(dllimport) BOOL __stdcall WriteFile(HANDLE hFile, const void* lpBuffer, DWORD nNumberOfBytesToWrite, DWORD* lpNumberOfBytesWritten, void* lpOverlapped);
 __declspec(dllimport) BOOL __stdcall DeleteFileW(const WCHAR* lpFileName);
 __declspec(dllimport) BOOL __stdcall CopyFileW(const WCHAR* lpExistingFileName, const WCHAR* lpNewFileName, BOOL bFailIfExists);
+__declspec(dllimport) BOOL __stdcall CreateHardLinkW(const WCHAR* lpFileName, const WCHAR* lpExistingFileName, SECURITY_ATTRIBUTES* lpSecurityAttributes);
 __declspec(dllimport) HANDLE __stdcall FindFirstFileW(const WCHAR* lpFileName, WIN32_FIND_DATAW* lpFindFileData);
 __declspec(dllimport) BOOL __stdcall FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 __declspec(dllimport) BOOL __stdcall FindClose(HANDLE hFindFile);
@@ -698,6 +704,8 @@ __declspec(dllimport) BOOL __stdcall GetWindowRect(HWND hWnd, RECT* lpRect);
 __declspec(dllimport) int __stdcall GetWindowTextW(HWND hWnd, WCHAR* lpString, int nMaxCount);
 __declspec(dllimport) BOOL __stdcall SetWindowTextW(HWND hWnd, const WCHAR* lpString);
 __declspec(dllimport) BOOL __stdcall SetForegroundWindow(HWND hWnd);
+__declspec(dllimport) HANDLE __stdcall LoadIconW(HANDLE hInstance, const WCHAR* lpIconName);
+__declspec(dllimport) ULONG_PTR __stdcall SendMessageW(HWND hWnd, unsigned int Msg, ULONG_PTR wParam, ULONG_PTR lParam);
 __declspec(dllimport) HANDLE __stdcall CreateMutexW(SECURITY_ATTRIBUTES* lpMutexAttributes, BOOL bInitialOwner, const WCHAR* lpName);
 __declspec(dllimport) DWORD __stdcall GetLastError(void);
 __declspec(dllimport) DWORD __stdcall GetTickCount(void);
@@ -889,6 +897,16 @@ static void delete_dir_recursive(const WCHAR* dirPath) {
   const winLauncherSource = `
 ${sharedWinHeader}
 
+static int wcontains(const WCHAR* hay, const WCHAR* needle) {
+    if (!hay || !needle || !needle[0]) return 0;
+    for (int i = 0; hay[i]; i++) {
+        int j = 0;
+        while (needle[j] && hay[i + j] == needle[j]) j++;
+        if (!needle[j]) return 1;
+    }
+    return 0;
+}
+
 static void path_to_file_url(const WCHAR* winPath, WCHAR* outUrl) {
     wcpy(outUrl, L"file:///");
     int j = wlen(outUrl);
@@ -1017,9 +1035,50 @@ static void write_deeplink_bridge(const WCHAR* exeDir, const WCHAR* cliArg) {
     write_ascii_file(jsPath, jsBuf);
 }
 
+static void mirror_gecko_dir(const WCHAR* srcDir, const WCHAR* dstDir, int depth) {
+    if (depth > 4) return;
+    CreateDirectoryW(dstDir, 0);
+    WCHAR searchPat[2048];
+    wcpy(searchPat, srcDir);
+    wcat(searchPat, L"\\\\*");
+
+    WIN32_FIND_DATAW ffd;
+    for (int i = 0; i < (int)sizeof(ffd); i++) ((unsigned char*)&ffd)[i] = 0;
+
+    HANDLE hFind = FindFirstFileW(searchPat, &ffd);
+    if (hFind == INVALID_HANDLE_VALUE) return;
+    do {
+        if (weq(ffd.cFileName, L".") || weq(ffd.cFileName, L"..")) continue;
+        if (weq(ffd.cFileName, L"uninstall") ||
+            weq(ffd.cFileName, L"updater.exe") ||
+            weq(ffd.cFileName, L"crashreporter.exe") ||
+            weq(ffd.cFileName, L"maintenanceservice.exe") ||
+            weq(ffd.cFileName, L"maintenanceservice_installer.exe") ||
+            weq(ffd.cFileName, L"pingsender.exe") ||
+            weq(ffd.cFileName, L"default-browser-agent.exe")) {
+            continue;
+        }
+        WCHAR sPath[2048], dPath[2048];
+        wcpy(sPath, srcDir); wcat(sPath, L"\\\\"); wcat(sPath, ffd.cFileName);
+        wcpy(dPath, dstDir); wcat(dPath, L"\\\\"); wcat(dPath, ffd.cFileName);
+
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            mirror_gecko_dir(sPath, dPath, depth + 1);
+        } else {
+            if (!file_exists(dPath)) {
+                if (!CreateHardLinkW(dPath, sPath, 0)) {
+                    CopyFileW(sPath, dPath, 0);
+                }
+            }
+        }
+    } while (FindNextFileW(hFind, &ffd));
+    FindClose(hFind);
+}
+
 typedef struct {
     DWORD targetPid;
     int count;
+    HANDLE hIcon;
 } WatchdogCtx;
 
 static BOOL __stdcall enum_windows_cb(HWND hwnd, ULONG_PTR lParam) {
@@ -1031,10 +1090,15 @@ static BOOL __stdcall enum_windows_cb(HWND hwnd, ULONG_PTR lParam) {
         if (GetWindowRect(hwnd, &r)) {
             if ((r.right - r.left) > 200 && (r.bottom - r.top) > 200) {
                 ctx->count++;
+                if (ctx->hIcon) {
+                    // WM_SETICON = 0x0080, ICON_SMALL = 0, ICON_BIG = 1
+                    SendMessageW(hwnd, 0x0080, 0, (ULONG_PTR)ctx->hIcon);
+                    SendMessageW(hwnd, 0x0080, 1, (ULONG_PTR)ctx->hIcon);
+                }
                 WCHAR title[256];
                 title[0] = 0;
                 if (GetWindowTextW(hwnd, title, 255) > 0) {
-                    if (weq(title, L"Mozilla Firefox")) {
+                    if (wcontains(title, L"Firefox") || wcontains(title, L"Mozilla")) {
                         SetWindowTextW(hwnd, L"FishTools Studio");
                     }
                 }
@@ -1053,6 +1117,7 @@ void mainCRTStartup(void) {
     SetEnvironmentVariableW(L"MOZ_DISABLE_RDD_SANDBOX", L"1");
     SetEnvironmentVariableW(L"MOZ_DISABLE_SOCKET_PROCESS_SANDBOX", L"1");
     SetEnvironmentVariableW(L"JSGC_DISABLE_POISONING", L"1");
+    SetEnvironmentVariableW(L"MOZ_CRASHREPORTER_DISABLE", L"1");
 
     WCHAR exeDir[2048];
     GetModuleFileNameW(0, exeDir, 2048);
@@ -1082,10 +1147,10 @@ void mainCRTStartup(void) {
     wcpy(loaderPath, exeDir);
     wcat(loaderPath, L"\\\\resources\\\\app\\\\shell\\\\loader.html");
 
-    // Store Gecko profile & downloaded resources in AppData\\Local\\com.cutefishaep.ofts
-    // (hidden from File Explorer and automatically removed by Uninstall FishTools Studio.exe)
+    // Store Gecko profile & skinned runtime in AppData\\Local\\com.cutefishaep.ofts
     WCHAR appDataRoot[2048];
     WCHAR profileDir[2048];
+    appDataRoot[0] = 0;
     if (GetEnvironmentVariableW(L"LOCALAPPDATA", appDataRoot, 1024) > 0) {
         wcat(appDataRoot, L"\\\\com.cutefishaep.ofts");
         CreateDirectoryW(appDataRoot, 0);
@@ -1170,15 +1235,48 @@ void mainCRTStartup(void) {
         MessageBoxW(
             0,
             L"Please install Mozilla Firefox (64-bit) to run FishTools Studio with Gecko WebRender GPU acceleration.",
-            L"FishTools Studio - Firefox Runtime Required",
+            L"FishTools Studio - Gecko Runtime Required",
             MB_ICONERROR
         );
         ExitProcess(1);
     }
 
+    // Zero-Copy Skinning: Hardlink Gecko runtime into AppData\\Local\\com.cutefishaep.ofts\\gecko-engine
+    // and run as "FishTools Studio.exe" with Enterprise Policies injected
+    WCHAR launchBin[2048];
+    wcpy(launchBin, ffBin);
+    if (appDataRoot[0]) {
+        WCHAR ffDir[2048];
+        wcpy(ffDir, ffBin);
+        dirname_w(ffDir);
+
+        WCHAR engineDir[2048];
+        wcpy(engineDir, appDataRoot);
+        wcat(engineDir, L"\\\\gecko-engine");
+        mirror_gecko_dir(ffDir, engineDir, 0);
+
+        WCHAR distDir[2048], polPath[2048];
+        wcpy(distDir, engineDir); wcat(distDir, L"\\\\distribution");
+        CreateDirectoryW(distDir, 0);
+        wcpy(polPath, distDir); wcat(polPath, L"\\\\policies.json");
+        write_ascii_file(polPath, "{\\"policies\\":{\\"DisableAppUpdate\\":true,\\"DisableTelemetry\\":true,\\"DontCheckDefaultBrowser\\":true,\\"DisableFirefoxStudies\\":true,\\"DisablePocket\\":true,\\"DisableFirefoxAccounts\\":true,\\"OverrideFirstRunPage\\":\\"\\",\\"OverridePostUpdatePage\\":\\"\\"}}\\n");
+
+        WCHAR skinnedExe[2048];
+        wcpy(skinnedExe, engineDir);
+        wcat(skinnedExe, L"\\\\FishTools Studio.exe");
+        if (!file_exists(skinnedExe)) {
+            if (!CreateHardLinkW(skinnedExe, ffBin, 0)) {
+                CopyFileW(ffBin, skinnedExe, 0);
+            }
+        }
+        if (file_exists(skinnedExe)) {
+            wcpy(launchBin, skinnedExe);
+        }
+    }
+
     WCHAR cmdLine[8192];
     wcpy(cmdLine, L"\\"");
-    wcat(cmdLine, ffBin);
+    wcat(cmdLine, launchBin);
     wcat(cmdLine, L"\\" --no-remote -profile \\"");
     wcat(cmdLine, profileDir);
     wcat(cmdLine, L"\\" \\"");
@@ -1193,7 +1291,7 @@ void mainCRTStartup(void) {
     for (int i = 0; i < (int)sizeof(pi); i++) ((unsigned char*)&pi)[i] = 0;
 
     BOOL ok = CreateProcessW(
-        ffBin,
+        launchBin,
         cmdLine,
         0,
         0,
@@ -1209,12 +1307,15 @@ void mainCRTStartup(void) {
         ExitProcess(1);
     }
 
+    HANDLE hAppIcon = LoadIconW(GetModuleHandleW(0), (const WCHAR*)(ULONG_PTR)1);
+
     int seenWindow = 0;
     int zeroStreak = 0;
     while (WaitForSingleObject(pi.hProcess, 120) == WAIT_TIMEOUT) {
         WatchdogCtx ctx;
         ctx.targetPid = pi.dwProcessId;
         ctx.count = 0;
+        ctx.hIcon = hAppIcon;
         EnumWindows(enum_windows_cb, (ULONG_PTR)&ctx);
         if (ctx.count > 0) {
             seenWindow = 1;
