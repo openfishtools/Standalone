@@ -436,6 +436,8 @@ user_pref("browser.tabs.inTitlebar", 0);
 user_pref("browser.startup.blankWindow", false);
 user_pref("browser.startup.preXulSkeletonUI", false);
 user_pref("browser.startup.page", 1);
+user_pref("browser.startup.homepage", "https://studio.cutefish.my.id/");
+user_pref("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0 FishToolsStudio/${manifest.version}");
 user_pref("network.protocol-handler.external.ofts", false);
 user_pref("network.protocol-handler.external.fishtools", false);
 user_pref("browser.newtabpage.enabled", false);
@@ -492,9 +494,13 @@ user_pref("webgl.enable-draft-extensions", true);
 user_pref("dom.workers.maxPerDomain", 128);
 user_pref("layout.frame_rate", 0);
 
-// 100% RAM Cache & Unlimited Memory Allocation (Zero Disk Cache I/O Lag)
-user_pref("browser.cache.disk.enable", false);
-user_pref("browser.cache.disk_cache_ssl", false);
+// Persistent Offline Cache + ServiceWorkers + Unlimited Memory Allocation
+user_pref("browser.cache.disk.enable", true);
+user_pref("browser.cache.disk_cache_ssl", true);
+user_pref("browser.cache.disk.capacity", 1048576);
+user_pref("browser.cache.offline.enable", true);
+user_pref("dom.serviceWorkers.enabled", true);
+user_pref("dom.caches.enabled", true);
 user_pref("browser.cache.memory.enable", true);
 user_pref("browser.cache.memory.capacity", -1);
 user_pref("browser.cache.memory.max_entry_size", -1);
@@ -582,6 +588,21 @@ user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
   const fishtoolsCfg = `// FishTools Studio Gecko AutoConfig
 try {
   const { Services } = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs");
+  const _Cc = Components.classes;
+  const _Ci = Components.interfaces;
+
+  Services.obs.addObserver((doc) => {
+    try {
+      if (!doc || !doc.defaultView || !doc.location) return;
+      const host = doc.location.hostname || "";
+      if (host === "studio.cutefish.my.id" || host.endsWith(".cutefish.my.id")) {
+        const w = doc.defaultView.wrappedJSObject || doc.defaultView;
+        w.__OFT_NATIVE_APP__ = true;
+        w.__OFT_PACKAGE_NAME__ = "com.cutefishaep.ofts";
+      }
+    } catch (_) {}
+  }, "document-element-inserted");
+
   const stripBrowserChrome = (win) => {
     try {
       if (!win || !win.document) return;
@@ -605,6 +626,73 @@ try {
       for (const id of removeIds) {
         const el = doc.getElementById(id);
         if (el) el.remove();
+      }
+
+      const studioHome = "https://studio.cutefish.my.id/";
+      let lastHandledId = "";
+      let lastHandledTime = 0;
+
+      const extractPresetId = (raw) => {
+        return String(raw || "")
+          .trim()
+          .replace(/^.*(?:ofts|fishtools):\\/\\/(?:import\\/|project\\/|p\\/)?/i, "")
+          .replace(/^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/(?:import\\/|project\\/|p\\/)?/i, "")
+          .replace(/[/?#].*$/, "")
+          .replace(/[^a-zA-Z0-9_-]/g, "");
+      };
+
+      if (win.gBrowser) {
+        const checkTabs = () => {
+          try {
+            if (!win.gBrowser.tabs || win.gBrowser.tabs.length === 0) {
+              win.gBrowser.addTrustedTab(studioHome);
+              return;
+            }
+            try {
+              const onceFile = Services.dirsvc.get("LocalAppData", _Ci.nsIFile);
+              onceFile.append("com.cutefishaep.ofts");
+              onceFile.append("deeplink.once");
+              if (onceFile.exists()) {
+                let raw = "";
+                try {
+                  const fstream = _Cc["@mozilla.org/network/file-input-stream;1"].createInstance(_Ci.nsIFileInputStream);
+                  const cstream = _Cc["@mozilla.org/scriptableinputstream;1"].createInstance(_Ci.nsIScriptableInputStream);
+                  fstream.init(onceFile, -1, 0, 0);
+                  cstream.init(fstream);
+                  raw = cstream.read(cstream.available());
+                  cstream.close();
+                  fstream.close();
+                } catch (_) {}
+                try { onceFile.remove(false); } catch (_) {}
+                const id = extractPresetId(raw);
+                const now = Date.now();
+                if (id && !(id === lastHandledId && (now - lastHandledTime) < 3000)) {
+                  lastHandledId = id;
+                  lastHandledTime = now;
+                  win.gBrowser.selectedBrowser.fixupAndLoadURIString(studioHome + "?import=" + id, {
+                    triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+                  });
+                  return;
+                }
+              }
+            } catch (_) {}
+
+            const spec = (win.gBrowser.currentURI && win.gBrowser.currentURI.spec) || "";
+            if (spec.startsWith("ofts:") || spec.startsWith("fishtools:")) {
+              const id = extractPresetId(spec);
+              const now = Date.now();
+              lastHandledId = id;
+              lastHandledTime = now;
+              const target = id ? (studioHome + "?import=" + id) : studioHome;
+              win.gBrowser.selectedBrowser.fixupAndLoadURIString(target, {
+                triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+              });
+              return;
+            }
+          } catch (_) {}
+        };
+        win.setTimeout(checkTabs, 150);
+        win.setInterval(checkTabs, 600);
       }
     } catch (_) {}
   };
@@ -1023,78 +1111,28 @@ static void write_ascii_file(const WCHAR* path, const char* data) {
     }
 }
 
-static void write_deeplink_bridge(const WCHAR* exeDir, const WCHAR* cliArg) {
-    WCHAR jsonPath[2048], jsPath[2048];
-    wcpy(jsonPath, exeDir); wcat(jsonPath, L"\\\\resources\\\\app\\\\shell\\\\deeplink-live.json");
-    wcpy(jsPath, exeDir); wcat(jsPath, L"\\\\resources\\\\app\\\\shell\\\\deeplink.js");
+static void write_deeplink_once_win(const WCHAR* cliArg) {
+    if (!cliArg || !cliArg[0]) return;
+    WCHAR localAppData[1024];
+    if (GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, 1024) == 0) return;
 
-    if (!cliArg[0]) {
-        write_ascii_file(jsPath, "window.__OFT_DEEPLINK__ = null;\\n");
-        return;
-    }
+    WCHAR appDataRoot[2048];
+    wcpy(appDataRoot, localAppData);
+    wcat(appDataRoot, L"\\\\com.cutefishaep.ofts");
+    CreateDirectoryW(appDataRoot, 0);
+
+    WCHAR oncePath[2048];
+    wcpy(oncePath, appDataRoot);
+    wcat(oncePath, L"\\\\deeplink.once");
 
     char safeUrl[1024];
     int p = 0;
     for (int i = 0; cliArg[i] && p < 980; i++) {
         WCHAR c = cliArg[i];
-        if (c == L'\\\\' || c == L'"') safeUrl[p++] = '\\\\';
         if (c >= 32 && c < 127) safeUrl[p++] = (char)c;
     }
     safeUrl[p] = 0;
-
-    DWORD tick = GetTickCount();
-    char tickBuf[32];
-    int tp = 0;
-    if (tick == 0) {
-        tickBuf[tp++] = '1';
-    } else {
-        char rev[32];
-        int rp = 0;
-        while (tick > 0) {
-            rev[rp++] = (char)('0' + (tick % 10));
-            tick /= 10;
-        }
-        while (rp > 0) tickBuf[tp++] = rev[--rp];
-    }
-    tickBuf[tp] = 0;
-
-    char jsonBuf[1536];
-    const char* p1 = "{\\"url\\":\\"";
-    const char* p2 = "\\",\\"ts\\":";
-    const char* p3 = "}\\n";
-    int k = 0;
-    for (int i = 0; p1[i]; i++) jsonBuf[k++] = p1[i];
-    for (int i = 0; safeUrl[i]; i++) jsonBuf[k++] = safeUrl[i];
-    for (int i = 0; p2[i]; i++) jsonBuf[k++] = p2[i];
-    for (int i = 0; tickBuf[i]; i++) jsonBuf[k++] = tickBuf[i];
-    for (int i = 0; p3[i]; i++) jsonBuf[k++] = p3[i];
-    jsonBuf[k] = 0;
-    write_ascii_file(jsonPath, jsonBuf);
-
-    WCHAR studioJsonPath[2048], studioJsPath[2048];
-    wcpy(studioJsonPath, exeDir); wcat(studioJsonPath, L"\\\\resources\\\\app\\\\shell\\\\studio\\\\deeplink-live.json");
-    wcpy(studioJsPath, exeDir); wcat(studioJsPath, L"\\\\resources\\\\app\\\\shell\\\\studio\\\\deeplink.js");
-    write_ascii_file(studioJsonPath, jsonBuf);
-
-    char jsBuf[2048];
-    const char* j1 = "window.__OFT_DEEPLINK__ = \\"";
-    const char* j2 = "\\";\\nwindow.__OFT_DEEPLINK_TS__ = ";
-    const char* j3 = ";\\nif (typeof window.onNativeDeepLinkReceived === 'function') { window.onNativeDeepLinkReceived(\\"";
-    const char* j4 = "\\", ";
-    const char* j5 = "); }\\n";
-    k = 0;
-    for (int i = 0; j1[i]; i++) jsBuf[k++] = j1[i];
-    for (int i = 0; safeUrl[i]; i++) jsBuf[k++] = safeUrl[i];
-    for (int i = 0; j2[i]; i++) jsBuf[k++] = j2[i];
-    for (int i = 0; tickBuf[i]; i++) jsBuf[k++] = tickBuf[i];
-    for (int i = 0; j3[i]; i++) jsBuf[k++] = j3[i];
-    for (int i = 0; safeUrl[i]; i++) jsBuf[k++] = safeUrl[i];
-    for (int i = 0; j4[i]; i++) jsBuf[k++] = j4[i];
-    for (int i = 0; tickBuf[i]; i++) jsBuf[k++] = tickBuf[i];
-    for (int i = 0; j5[i]; i++) jsBuf[k++] = j5[i];
-    jsBuf[k] = 0;
-    write_ascii_file(jsPath, jsBuf);
-    write_ascii_file(studioJsPath, jsBuf);
+    write_ascii_file(oncePath, safeUrl);
 }
 
 static void mirror_gecko_dir(const WCHAR* srcDir, const WCHAR* dstDir, int depth) {
@@ -1190,10 +1228,12 @@ void mainCRTStartup(void) {
 
     WCHAR cliArg[1024];
     extract_first_cli_arg(cliArg);
-    write_deeplink_bridge(exeDir, cliArg);
 
     HANDLE hMutex = CreateMutexW(0, 1, L"Local\\\\FishToolsStudioSingleInstance");
     if (hMutex && GetLastError() == 183) {
+        if (cliArg[0]) {
+            write_deeplink_once_win(cliArg);
+        }
         ExitProcess(0);
     }
 
@@ -1204,10 +1244,6 @@ void mainCRTStartup(void) {
     if (file_exists(resDir)) {
         SetFileAttributesW(resDir, FILE_ATTRIBUTE_HIDDEN);
     }
-
-    WCHAR loaderPath[2048];
-    wcpy(loaderPath, exeDir);
-    wcat(loaderPath, L"\\\\resources\\\\app\\\\shell\\\\loader.html");
 
     // Store Gecko profile & skinned runtime in AppData\\Local\\com.cutefishaep.ofts
     WCHAR appDataRoot[2048];
@@ -1258,15 +1294,13 @@ void mainCRTStartup(void) {
     DeleteFileW(ssFile3);
 
     WCHAR loaderUrl[4096];
-    path_to_file_url(loaderPath, loaderUrl);
+    wcpy(loaderUrl, L"https://studio.cutefish.my.id/");
 
     if (cliArg[0]) {
         WCHAR cleanId[256];
         extract_clean_import_id(cliArg, cleanId);
         if (cleanId[0]) {
             wcat(loaderUrl, L"?import=");
-            wcat(loaderUrl, cleanId);
-            wcat(loaderUrl, L"#import=");
             wcat(loaderUrl, cleanId);
         }
     }

@@ -178,101 +178,160 @@ FishTools Studio is an independent product by OpenFishTools and is not affiliate
   const fishtoolsCfg = `// FishTools Studio Gecko AutoConfig
 try {
   const { Services } = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs");
+  const _Cc = Components.classes;
+  const _Ci = Components.interfaces;
+  const _exeFile = Services.dirsvc.get("XREExeF", _Ci.nsIFile);
+  const _isFishTools = _exeFile && /fishtools/i.test(_exeFile.leafName || "");
 
-  const stripBrowserChrome = (win) => {
-    try {
-      if (!win || !win.document) return;
-      const doc = win.document;
-      const root = doc.documentElement;
-      if (root) {
-        root.setAttribute("data-title-default", "FishTools Studio");
-        root.setAttribute("data-content-title-default", "FishTools Studio");
-        root.setAttribute("data-title-private", "FishTools Studio");
-        root.setAttribute("title", "FishTools Studio");
-      }
-      doc.title = "FishTools Studio";
+  if (_isFishTools) {
+    // Inject native app flags into studio.cutefish.my.id before page scripts run
+    Services.obs.addObserver((doc) => {
+      try {
+        if (!doc || !doc.defaultView || !doc.location) return;
+        const host = doc.location.hostname || "";
+        if (host === "studio.cutefish.my.id" || host.endsWith(".cutefish.my.id")) {
+          const w = doc.defaultView.wrappedJSObject || doc.defaultView;
+          w.__OFT_NATIVE_APP__ = true;
+          w.__OFT_PACKAGE_NAME__ = "com.cutefishaep.ofts";
+        }
+      } catch (_) {}
+    }, "document-element-inserted");
 
-      const removeIds = [
-        "main-menubar",
-        "toolbar-menubar",
-        "key_newNavigator",
-        "key_newNavigatorTab",
-        "key_privatebrowsing",
-        "key_openFile",
-        "key_savePage",
-        "printKb",
-        "key_close",
-        "key_closeWindow",
-        "key_preferencesCmdMac",
-        "viewBookmarksSidebarKb",
-        "key_gotoHistory",
-        "key_search",
-        "key_search2",
-        "focusURLBar",
-        "focusURLBar2",
-        "key_viewSource",
-        "key_openDownloads",
-        "key_openAddons",
-        "addBookmarkAsKb",
-        "bookmarkAllTabsKb",
-        "manBookmarkKb",
-        "viewBookmarksToolbarKb",
-        "key_restoreLastClosedTabOrWindowOrSession"
-      ];
-      for (const id of removeIds) {
-        const el = doc.getElementById(id);
-        if (el) el.remove();
-      }
+    const stripBrowserChrome = (win) => {
+      try {
+        if (!win || !win.document) return;
+        const doc = win.document;
+        const root = doc.documentElement;
+        if (root) {
+          root.setAttribute("data-title-default", "FishTools Studio");
+          root.setAttribute("data-content-title-default", "FishTools Studio");
+          root.setAttribute("data-title-private", "FishTools Studio");
+          root.setAttribute("title", "FishTools Studio");
+        }
+        doc.title = "FishTools Studio";
 
-      const homeUrl = Services.prefs.getStringPref("browser.startup.homepage", "");
-      if (win.gBrowser && homeUrl) {
-        const baseHome = homeUrl.split("?")[0].split("#")[0];
-        const checkTabs = () => {
-          try {
-            if (!win.gBrowser.tabs || win.gBrowser.tabs.length === 0) {
-              win.gBrowser.addTrustedTab(homeUrl);
-              return;
-            }
-            const spec = (win.gBrowser.currentURI && win.gBrowser.currentURI.spec) || "";
-            if (
-              spec.startsWith("ofts:") ||
-              spec.startsWith("fishtools:") ||
-              /^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/[a-zA-Z0-9_-]+/i.test(spec)
-            ) {
-              const id = spec
-                .replace(/^.*(?:ofts|fishtools):\\/\\/(?:import\\/|project\\/|p\\/)?/i, "")
-                .replace(/^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/(?:import\\/|project\\/|p\\/)?/i, "")
-                .replace(/[/?#].*$/, "")
-                .replace(/[^a-zA-Z0-9_-]/g, "");
-              const target = id ? (baseHome + "?import=" + id + "#import=" + id) : homeUrl;
-              win.gBrowser.selectedBrowser.fixupAndLoadURIString(target, {
-                triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
-              });
-              return;
-            }
-            if (
-              spec === "about:blank" ||
-              spec.startsWith("about:newtab") ||
-              spec.startsWith("about:home") ||
-              spec.startsWith("about:welcome") ||
-              spec.startsWith("about:preferences") ||
-              spec.startsWith("about:addons")
-            ) {
-              win.gBrowser.selectedBrowser.fixupAndLoadURIString(homeUrl, {
-                triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
-              });
-            }
-          } catch (_) {}
+        const removeIds = [
+          "main-menubar",
+          "toolbar-menubar",
+          "key_newNavigator",
+          "key_newNavigatorTab",
+          "key_privatebrowsing",
+          "key_openFile",
+          "key_savePage",
+          "printKb",
+          "key_close",
+          "key_closeWindow",
+          "key_preferencesCmdMac",
+          "viewBookmarksSidebarKb",
+          "key_gotoHistory",
+          "key_search",
+          "key_search2",
+          "focusURLBar",
+          "focusURLBar2",
+          "key_viewSource",
+          "key_openDownloads",
+          "key_openAddons",
+          "addBookmarkAsKb",
+          "bookmarkAllTabsKb",
+          "manBookmarkKb",
+          "viewBookmarksToolbarKb",
+          "key_restoreLastClosedTabOrWindowOrSession"
+        ];
+        for (const id of removeIds) {
+          const el = doc.getElementById(id);
+          if (el) el.remove();
+        }
+
+        const studioHome = "https://studio.cutefish.my.id/";
+        let lastHandledId = "";
+        let lastHandledTime = 0;
+
+        const extractPresetId = (raw) => {
+          return String(raw || "")
+            .trim()
+            .replace(/^.*(?:ofts|fishtools):\\/\\/(?:import\\/|project\\/|p\\/)?/i, "")
+            .replace(/^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/(?:import\\/|project\\/|p\\/)?/i, "")
+            .replace(/[/?#].*$/, "")
+            .replace(/[^a-zA-Z0-9_-]/g, "");
         };
-        win.setTimeout(checkTabs, 150);
-        win.setInterval(checkTabs, 600);
-      }
-    } catch (_) {}
-  };
 
-  Services.obs.addObserver((subject) => {
-    stripBrowserChrome(subject);
-  }, "browser-delayed-startup-finished");
+        if (win.gBrowser) {
+          const checkTabs = () => {
+            try {
+              if (!win.gBrowser.tabs || win.gBrowser.tabs.length === 0) {
+                win.gBrowser.addTrustedTab(studioHome);
+                return;
+              }
+
+              // 1. Check one-shot deeplink.once file written when user clicks a preset link
+              try {
+                const onceFile = Services.dirsvc.get("Home", _Ci.nsIFile);
+                onceFile.append("Library");
+                onceFile.append("Caches");
+                onceFile.append("com.cutefishaep.ofts");
+                onceFile.append("deeplink.once");
+                if (onceFile.exists()) {
+                  let raw = "";
+                  try {
+                    const fstream = _Cc["@mozilla.org/network/file-input-stream;1"].createInstance(_Ci.nsIFileInputStream);
+                    const cstream = _Cc["@mozilla.org/scriptableinputstream;1"].createInstance(_Ci.nsIScriptableInputStream);
+                    fstream.init(onceFile, -1, 0, 0);
+                    cstream.init(fstream);
+                    raw = cstream.read(cstream.available());
+                    cstream.close();
+                    fstream.close();
+                  } catch (_) {}
+                  try { onceFile.remove(false); } catch (_) {}
+                  const id = extractPresetId(raw);
+                  const now = Date.now();
+                  if (id && !(id === lastHandledId && (now - lastHandledTime) < 3000)) {
+                    lastHandledId = id;
+                    lastHandledTime = now;
+                    win.gBrowser.selectedBrowser.fixupAndLoadURIString(studioHome + "?import=" + id, {
+                      triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+                    });
+                    return;
+                  }
+                }
+              } catch (_) {}
+
+              // 2. Intercept only raw custom protocol URIs (ofts:// or fishtools://), NEVER https://studio.cutefish.my.id/...
+              const spec = (win.gBrowser.currentURI && win.gBrowser.currentURI.spec) || "";
+              if (spec.startsWith("ofts:") || spec.startsWith("fishtools:")) {
+                const id = extractPresetId(spec);
+                const now = Date.now();
+                lastHandledId = id;
+                lastHandledTime = now;
+                const target = id ? (studioHome + "?import=" + id) : studioHome;
+                win.gBrowser.selectedBrowser.fixupAndLoadURIString(target, {
+                  triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+                });
+                return;
+              }
+
+              if (
+                spec.startsWith("about:newtab") ||
+                spec.startsWith("about:home") ||
+                spec.startsWith("about:welcome") ||
+                spec.startsWith("about:preferences") ||
+                spec.startsWith("about:addons")
+              ) {
+                win.gBrowser.selectedBrowser.fixupAndLoadURIString(studioHome, {
+                  triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+                });
+              }
+            } catch (_) {}
+          };
+          win.setTimeout(checkTabs, 150);
+          win.setInterval(checkTabs, 600);
+        }
+      } catch (_) {}
+    };
+
+    Services.obs.addObserver((subject) => {
+      stripBrowserChrome(subject);
+    }, "browser-delayed-startup-finished");
+  }
 } catch (_) {}
 `;
   fs.writeFileSync(path.join(resourcesDir, 'fishtools.cfg'), fishtoolsCfg, 'utf8');
@@ -286,11 +345,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUNDLE_CONTENTS="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUNDLE_RES="$BUNDLE_CONTENTS/Resources"
-BUNDLE_SHELL="$BUNDLE_RES/app/shell"
 APP_DATA_DIR="$HOME/Library/Caches/com.cutefishaep.ofts"
-RUNTIME_DIR="$APP_DATA_DIR/runtime"
 PROFILE_DIR="$APP_DATA_DIR/gecko-profile"
 mkdir -p "$PROFILE_DIR/chrome"
+
+# Remove any legacy local file:// runtime directory so Studio runs directly on https://studio.cutefish.my.id
+rm -rf "$APP_DATA_DIR/runtime"
 
 # Locate host Gecko engine
 FF_APP=""
@@ -313,6 +373,13 @@ fi
 
 FF_MACOS="$FF_APP/Contents/MacOS"
 FF_RES="$FF_APP/Contents/Resources"
+
+# Ensure AutoConfig (guarded by _isFishTools) is also present in FF_RES where symlinked XUL resolves GreD
+if [ -w "$FF_RES" ]; then
+  mkdir -p "$FF_RES/defaults/pref" 2>/dev/null || true
+  cp -f "$BUNDLE_RES/defaults/pref/autoconfig.js" "$FF_RES/defaults/pref/autoconfig.js" 2>/dev/null || true
+  cp -f "$BUNDLE_RES/fishtools.cfg" "$FF_RES/fishtools.cfg" 2>/dev/null || true
+fi
 
 # Determine target bundle for Zero-Copy Symlink Skinning
 TARGET_APP="$(cd "$BUNDLE_CONTENTS/.." && pwd)"
@@ -375,72 +442,16 @@ fi
 printf '%s' "\$GECKO_BIN" > "$APP_DATA_DIR/gecko_bin.path"
 printf '%s' "\$T_MACOS/libfishtools_bridge.dylib" > "$APP_DATA_DIR/bridge_dylib.path"
 
-apply_studio_patches() {
-  local TARGET_STUDIO="\$1"
-  if [ -f "\$TARGET_STUDIO/effects/loader.js" ]; then
-    sed -i '' "s/var host = (window.location && window.location.hostname) || (isFileProtocol ? 'file:\\/\\/' : '');/var host = (window.location \\&\\& window.location.hostname) || 'localhost';/g" "\$TARGET_STUDIO/effects/loader.js" 2>/dev/null || true
-    sed -i '' "s/var host = (window.location && window.location.hostname) || '';/var host = (window.location \\&\\& window.location.hostname) || 'localhost';/g" "\$TARGET_STUDIO/effects/loader.js" 2>/dev/null || true
-  fi
-  if [ -f "\$TARGET_STUDIO/js/preview-cache.js" ]; then
-    sed -i '' "s/this.maxFrames = isMobile ? 180 : (devMem <= 2 ? 150 : (devMem <= 4 ? 300 : 600));/this.maxFrames = 2400;/g" "\$TARGET_STUDIO/js/preview-cache.js" 2>/dev/null || true
-  fi
-  if [ -f "\$TARGET_STUDIO/js/video-stream-manager.js" ]; then
-    sed -i '' "s/this.maxCacheSize = 180;/this.maxCacheSize = 900;/g" "\$TARGET_STUDIO/js/video-stream-manager.js" 2>/dev/null || true
-  fi
-  if [ -f "\$TARGET_STUDIO/js/frame-extractor.js" ]; then
-    sed -i '' "s/this.maxRamFrames = 600;/this.maxRamFrames = 1800;/g" "\$TARGET_STUDIO/js/frame-extractor.js" 2>/dev/null || true
-  fi
-  for html_file in index.html desktop.html editor.html; do
-    if [ -f "\$TARGET_STUDIO/\$html_file" ] && ! grep -q "__OFT_NATIVE_APP__" "\$TARGET_STUDIO/\$html_file" 2>/dev/null; then
-      sed -i '' 's|<head>|<head><script>window.__OFT_NATIVE_APP__=true;window.__OFT_PACKAGE_NAME__="com.cutefishaep.ofts";try{localStorage.removeItem("ofts_live_cdn_ver");}catch(_){}</script>|' "\$TARGET_STUDIO/\$html_file" 2>/dev/null || true
-    fi
-  done
-}
-
-mkdir -p "$RUNTIME_DIR"
-cp "$BUNDLE_SHELL/loader.html" "$BUNDLE_SHELL/index.html" "$BUNDLE_SHELL/shell.css" "$BUNDLE_SHELL/shell.js" "$RUNTIME_DIR/" 2>/dev/null || true
-if [ ! -f "$RUNTIME_DIR/deeplink.js" ]; then
-  cp "$BUNDLE_SHELL/deeplink.js" "$RUNTIME_DIR/" 2>/dev/null || true
-fi
-if [ ! -f "$RUNTIME_DIR/studio/version.json" ] || ! cmp -s "$BUNDLE_SHELL/manifest.json" "$RUNTIME_DIR/manifest.json" 2>/dev/null; then
-  cp -R "$BUNDLE_SHELL/"* "$RUNTIME_DIR/"
-  apply_studio_patches "$RUNTIME_DIR/studio"
-  rm -f "$RUNTIME_DIR/.github_updated"
-fi
-
 INCOMING_LINK="\$1"
 MODE_FLAG="\$2"
 IMPORT_ID=""
 if [ -n "\$INCOMING_LINK" ]; then
-  IMPORT_ID=\$(printf '%s' "\$INCOMING_LINK" | sed -E 's#^.*(ofts|fishtools)://(import/|project/|p/)?##; s#[/?#].*\$##; s/[^a-zA-Z0-9_-]//g')
-  SAFE_LINK=\$(printf '%s' "\$INCOMING_LINK" | sed 's/"/\\\\"/g')
-  echo "window.__OFT_DEEPLINK__ = \\"\$SAFE_LINK\\";" > "$RUNTIME_DIR/deeplink.js"
-  TS_MS=\$(python3 -c 'import time; print(int(time.time()*1000))' 2>/dev/null || echo "\$(date +%s)000")
-  echo "{\\"url\\":\\"\$SAFE_LINK\\",\\"id\\":\\"\$IMPORT_ID\\",\\"ts\\":\$TS_MS}" > "$RUNTIME_DIR/deeplink-live.json"
-elif [ -z "\$MODE_FLAG" ]; then
-  echo "window.__OFT_DEEPLINK__ = null;" > "$RUNTIME_DIR/deeplink.js"
-fi
-
-if curl -fsSL --max-time 3 "https://raw.githubusercontent.com/openfishtools/Studio/main/version.json" -o "/tmp/ofts_remote_ver.json" 2>/dev/null; then
-  REMOTE_VER=\$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' /tmp/ofts_remote_ver.json | cut -d'"' -f4)
-  LOCAL_VER=""
-  if [ -f "$RUNTIME_DIR/studio/version.json" ]; then
-    LOCAL_VER=\$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$RUNTIME_DIR/studio/version.json" | cut -d'"' -f4)
-  fi
-  if [ -n "\$REMOTE_VER" ] && [ "\$REMOTE_VER" != "\$LOCAL_VER" ]; then
-    if [ -d "$RUNTIME_DIR/studio/.git" ]; then
-      git -C "$RUNTIME_DIR/studio" pull --ff-only origin main >/dev/null 2>&1 || true
-    else
-      curl -fsSL --max-time 20 "https://codeload.github.com/openfishtools/Studio/tar.gz/refs/heads/main" | tar -xz --strip-components=1 -C "$RUNTIME_DIR/studio" 2>/dev/null || true
-    fi
-    apply_studio_patches "$RUNTIME_DIR/studio"
-    touch "$RUNTIME_DIR/.github_updated"
-  fi
+  IMPORT_ID=\$(printf '%s' "\$INCOMING_LINK" | sed -E 's#^.*(ofts|fishtools)://(import/|project/|p/)?##; s#^https?://studio\\.cutefish\\.my\\.id/(import/|project/|p/)?##; s#[/?#].*\$##; s/[^a-zA-Z0-9_-]//g')
 fi
 
 # Always purge stale SessionStore and external handler caches so Gecko never restores a 0-tab blank window
 rm -rf "$PROFILE_DIR/startupCache" "$PROFILE_DIR/sessionstore-backups"
-rm -f "$PROFILE_DIR/sessionstore.jsonlz4" "$PROFILE_DIR/sessionCheckpoints.json" "$PROFILE_DIR/handlers.json"
+rm -f "$PROFILE_DIR/sessionstore.jsonlz4" "$PROFILE_DIR/sessionCheckpoints.json" "$PROFILE_DIR/handlers.json" "$APP_DATA_DIR/deeplink.once"
 if [ -f "$PROFILE_DIR/prefs.js" ]; then
   sed -i '' '/browser\\.tabs\\.inTitlebar/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.homepage/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
@@ -449,13 +460,16 @@ if [ -f "$PROFILE_DIR/prefs.js" ]; then
   sed -i '' '/browser\\.startup\\.preXulSkeletonUI/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.couldRestoreSession/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.sessionstore/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.cache\\.disk/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/general\\.useragent\\.override/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.link\\.open_newwindow/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
 fi
 
-ENCODED_RUNTIME_DIR="\${RUNTIME_DIR// /%20}"
+HOME_URL="https://studio.cutefish.my.id/"
 if [ -n "\$IMPORT_ID" ]; then
-  LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html?import=\$IMPORT_ID#import=\$IMPORT_ID"
+  LOADER_URL="https://studio.cutefish.my.id/?import=\$IMPORT_ID"
 else
-  LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html"
+  LOADER_URL="\$HOME_URL"
 fi
 printf '%s' "\$LOADER_URL" > "$APP_DATA_DIR/loader.url"
 
@@ -507,7 +521,11 @@ user_pref("browser.tabs.inTitlebar", 0);
 user_pref("browser.startup.blankWindow", false);
 user_pref("browser.startup.preXulSkeletonUI", false);
 user_pref("browser.startup.page", 1);
-user_pref("browser.startup.homepage", "\$LOADER_URL");
+user_pref("browser.startup.homepage", "https://studio.cutefish.my.id/");
+user_pref("general.useragent.override", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0 FishToolsStudio/${version}");
+user_pref("browser.link.open_newwindow", 1);
+user_pref("browser.link.open_newwindow.override.external", 1);
+user_pref("browser.link.open_newwindow.restriction", 0);
 user_pref("network.protocol-handler.external.ofts", false);
 user_pref("network.protocol-handler.external.fishtools", false);
 user_pref("browser.newtabpage.enabled", false);
@@ -556,8 +574,12 @@ user_pref("webgl.allow-immediate-queries", true);
 user_pref("webgl.enable-draft-extensions", true);
 user_pref("dom.workers.maxPerDomain", 128);
 user_pref("layout.frame_rate", 0);
-user_pref("browser.cache.disk.enable", false);
-user_pref("browser.cache.disk_cache_ssl", false);
+user_pref("browser.cache.disk.enable", true);
+user_pref("browser.cache.disk_cache_ssl", true);
+user_pref("browser.cache.disk.capacity", 1048576);
+user_pref("browser.cache.offline.enable", true);
+user_pref("dom.serviceWorkers.enabled", true);
+user_pref("dom.caches.enabled", true);
 user_pref("browser.cache.memory.enable", true);
 user_pref("browser.cache.memory.capacity", -1);
 user_pref("browser.cache.memory.max_entry_size", -1);
@@ -676,10 +698,16 @@ fi
 @end
 
 static void (*gOrigSetEventHandler)(id, SEL, id, SEL, AEEventClass, AEEventID) = NULL;
+static id gGeckoURLHandler = nil;
+static SEL gGeckoURLSelector = NULL;
 
 static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector, AEEventClass eventClass, AEEventID eventID) {
     if (eventClass == kInternetEventClass && eventID == kAEGetURL) {
         FishToolsCocoaBridge *bridge = [FishToolsCocoaBridge sharedInstance];
+        if (handler && handler != bridge) {
+            gGeckoURLHandler = handler;
+            gGeckoURLSelector = selector;
+        }
         if (gOrigSetEventHandler) {
             gOrigSetEventHandler(self, _cmd, bridge, @selector(handleGetURLEvent:withReplyEvent:), eventClass, eventID);
         }
@@ -701,7 +729,7 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
         return;
     }
 
-    // Swizzle NSAppleEventManager so Gecko's MacApplicationDelegate can never hijack kAEGetURL (ofts:// deep links)
+    // Swizzle NSAppleEventManager so we rewrite ofts:// deep links to https://studio.cutefish.my.id/?import=
     Method m = class_getInstanceMethod([NSAppleEventManager class], @selector(setEventHandler:andSelector:forEventClass:andEventID:));
     if (m) {
         gOrigSetEventHandler = (void (*)(id, SEL, id, SEL, AEEventClass, AEEventID))method_getImplementation(m);
@@ -774,30 +802,49 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
     [self sanitizeMenuAndWindows];
 }
 
-- (void)writeDeepLinkBridgeFiles:(NSString *)rawUrl {
+- (NSString *)extractPresetIdFromUrl:(NSString *)rawUrl {
+    if (!rawUrl || rawUrl.length == 0) return @"";
+    NSString *s = [rawUrl stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSRegularExpression *rePrefix = [NSRegularExpression regularExpressionWithPattern:@"^.*(?:ofts|fishtools)://(?:import/|project/|p/)?" options:NSRegularExpressionCaseInsensitive error:nil];
+    s = [rePrefix stringByReplacingMatchesInString:s options:0 range:NSMakeRange(0, s.length) withTemplate:@""];
+    NSRegularExpression *reHttp = [NSRegularExpression regularExpressionWithPattern:@"^https?://studio\\\\.cutefish\\\\.my\\\\.id/(?:import/|project/|p/)?" options:NSRegularExpressionCaseInsensitive error:nil];
+    s = [reHttp stringByReplacingMatchesInString:s options:0 range:NSMakeRange(0, s.length) withTemplate:@""];
+    NSRegularExpression *reSuffix = [NSRegularExpression regularExpressionWithPattern:@"[/?#].*$" options:0 error:nil];
+    s = [reSuffix stringByReplacingMatchesInString:s options:0 range:NSMakeRange(0, s.length) withTemplate:@""];
+    NSRegularExpression *reClean = [NSRegularExpression regularExpressionWithPattern:@"[^a-zA-Z0-9_-]" options:0 error:nil];
+    s = [reClean stringByReplacingMatchesInString:s options:0 range:NSMakeRange(0, s.length) withTemplate:@""];
+    return s ?: @"";
+}
+
+- (void)writeDeepLinkOnceFile:(NSString *)rawUrl {
     if (!rawUrl || rawUrl.length == 0) return;
-    NSString *rtDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts/runtime"];
-    NSString *studioDir = [rtDir stringByAppendingPathComponent:@"studio"];
-    [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
-    [[NSFileManager defaultManager] createDirectoryAtPath:studioDir withIntermediateDirectories:YES attributes:nil error:nil];
-
-    NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
-                         stringByReplacingOccurrencesOfString:@"\\"" withString:@"\\\\\\""];
-    long long ts = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
-
-    NSString *jsonContent = [NSString stringWithFormat:@"{\\"url\\":\\"%@\\",\\"ts\\":%lld}\\n", escaped, ts];
-    [jsonContent writeToFile:[rtDir stringByAppendingPathComponent:@"deeplink-live.json"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    [jsonContent writeToFile:[studioDir stringByAppendingPathComponent:@"deeplink-live.json"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\nwindow.__OFT_DEEPLINK_TS__ = %lld;\\nif (typeof window.onNativeDeepLinkReceived === 'function') { window.onNativeDeepLinkReceived(\\"%@\\", %lld); }\\n", escaped, ts, escaped, ts];
-    [jsContent writeToFile:[rtDir stringByAppendingPathComponent:@"deeplink.js"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    [jsContent writeToFile:[studioDir stringByAppendingPathComponent:@"deeplink.js"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    NSString *appDataDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:appDataDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *oncePath = [appDataDir stringByAppendingPathComponent:@"deeplink.once"];
+    [rawUrl writeToFile:oncePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
 - (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
     NSString *urlStr = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
     if (!urlStr || urlStr.length == 0) return;
-    [self writeDeepLinkBridgeFiles:urlStr];
+    [self writeDeepLinkOnceFile:urlStr];
+
+    NSString *presetId = [self extractPresetIdFromUrl:urlStr];
+    NSString *targetUrl = presetId.length > 0
+        ? [NSString stringWithFormat:@"https://studio.cutefish.my.id/?import=%@", presetId]
+        : @"https://studio.cutefish.my.id/";
+
+    if (gGeckoURLHandler && gGeckoURLSelector && [gGeckoURLHandler respondsToSelector:gGeckoURLSelector]) {
+        @try {
+            [event setParamDescriptor:[NSAppleEventDescriptor descriptorWithString:targetUrl] forKeyword:keyDirectObject];
+            typedef void (*AppleEventIMP)(id, SEL, NSAppleEventDescriptor *, NSAppleEventDescriptor *);
+            AppleEventIMP imp = (AppleEventIMP)[gGeckoURLHandler methodForSelector:gGeckoURLSelector];
+            if (imp) {
+                imp(gGeckoURLHandler, gGeckoURLSelector, event, replyEvent);
+            }
+        } @catch (NSException * _) {}
+    }
+
     [NSApp activateIgnoringOtherApps:YES];
     for (NSWindow *win in [NSApp windows]) {
         if ([win canBecomeKeyWindow] || [win isVisible]) {
@@ -1024,27 +1071,16 @@ int main(int argc, char *argv[]) {
 #include <signal.h>
 #include <stdlib.h>
 
-static void write_deeplink_files(NSString *rawUrl, NSString *rtDir) {
+static void write_deeplink_once(NSString *rawUrl, NSString *appDataDir) {
     if (!rawUrl || rawUrl.length == 0) return;
-    [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
-
-    NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
-                         stringByReplacingOccurrencesOfString:@"\\"" withString:@"\\\\\\""];
-    long long ts = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
-
-    NSString *jsonContent = [NSString stringWithFormat:@"{\\"url\\":\\"%@\\",\\"ts\\":%lld}\\n", escaped, ts];
-    NSString *jsonPath = [rtDir stringByAppendingPathComponent:@"deeplink-live.json"];
-    [jsonContent writeToFile:jsonPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\n", escaped];
-    NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
-    [jsContent writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [[NSFileManager defaultManager] createDirectoryAtPath:appDataDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *oncePath = [appDataDir stringByAppendingPathComponent:@"deeplink.once"];
+    [rawUrl writeToFile:oncePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
 int main(int argc, char *argv[]) {
     @autoreleasepool {
         NSString *appDataDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts"];
-        NSString *rtDir = [appDataDir stringByAppendingPathComponent:@"runtime"];
         NSString *profileDir = [appDataDir stringByAppendingPathComponent:@"gecko-profile"];
         NSString *pidFile = [appDataDir stringByAppendingPathComponent:@"ff.pid"];
 
@@ -1056,14 +1092,13 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (incomingUrl.length > 0) {
-            write_deeplink_files(incomingUrl, rtDir);
-        }
-
         NSString *pidStr = [NSString stringWithContentsOfFile:pidFile encoding:NSUTF8StringEncoding error:nil];
         if (pidStr) {
             pid_t existingPid = (pid_t)[pidStr intValue];
             if (existingPid > 0 && existingPid != getpid() && kill(existingPid, 0) == 0) {
+                if (incomingUrl.length > 0) {
+                    write_deeplink_once(incomingUrl, appDataDir);
+                }
                 NSRunningApplication *running = [NSRunningApplication runningApplicationWithProcessIdentifier:existingPid];
                 if (running) {
                     [running activateWithOptions:(NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
@@ -1106,7 +1141,7 @@ int main(int argc, char *argv[]) {
         NSString *loaderUrlFile = [appDataDir stringByAppendingPathComponent:@"loader.url"];
         NSString *loaderUrl = [NSString stringWithContentsOfFile:loaderUrlFile encoding:NSUTF8StringEncoding error:nil];
         if (!loaderUrl || loaderUrl.length == 0) {
-            loaderUrl = [NSString stringWithFormat:@"file://%@/loader.html", [rtDir stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
+            loaderUrl = @"https://studio.cutefish.my.id/";
         }
 
         pid_t selfPid = getpid();
