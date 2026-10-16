@@ -410,6 +410,9 @@ RegDeleteTreeW
   const icoPath = path.join(EXP_ROOT, 'icons/icon.ico');
 
   const userChromeCss = `@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+:root, window, #main-window, #browser, #appcontent, #tabbrowser-tabbox, #tabbrowser-tabpanels, tabpanels {
+  background-color: #12170e !important;
+}
 #navigator-toolbox, #TabsToolbar, #titlebar, #toolbar-menubar, #main-menubar, #nav-bar, #PersonalToolbar, #sidebar-box, #sidebar-splitter, #statuspanel {
   visibility: collapse !important;
   display: none !important;
@@ -547,6 +550,11 @@ user_pref("privacy.clearOnShutdown.offlineApps", false);
 user_pref("privacy.sanitize.sanitizeOnShutdown", false);
 user_pref("browser.sessionstore.interval", 36000000);
 user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("browser.sessionstore.restore_on_demand", false);
+user_pref("browser.sessionstore.restore_pinned_tabs_on_demand", false);
+user_pref("browser.sessionstore.max_tabs_undo", 0);
+user_pref("browser.sessionstore.max_windows_undo", 0);
+user_pref("toolkit.startup.max_resumed_crashes", -1);
 
 // WebCodecs + Hardware Video Decoding Force-Enabled
 user_pref("dom.webCodec.enabled", true);
@@ -571,11 +579,50 @@ user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 `;
 
+  const fishtoolsCfg = `// FishTools Studio Gecko AutoConfig
+try {
+  const { Services } = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs");
+  const stripBrowserChrome = (win) => {
+    try {
+      if (!win || !win.document) return;
+      const doc = win.document;
+      const root = doc.documentElement;
+      if (root) {
+        root.setAttribute("data-title-default", "FishTools Studio");
+        root.setAttribute("data-content-title-default", "FishTools Studio");
+        root.setAttribute("data-title-private", "FishTools Studio");
+        root.setAttribute("title", "FishTools Studio");
+      }
+      doc.title = "FishTools Studio";
+      const removeIds = [
+        "main-menubar", "toolbar-menubar", "key_newNavigator", "key_newNavigatorTab",
+        "key_privatebrowsing", "key_openFile", "key_savePage", "printKb", "key_close",
+        "key_closeWindow", "viewBookmarksSidebarKb", "key_gotoHistory", "key_search",
+        "key_search2", "focusURLBar", "focusURLBar2", "key_viewSource", "key_openDownloads",
+        "key_openAddons", "addBookmarkAsKb", "bookmarkAllTabsKb", "manBookmarkKb",
+        "viewBookmarksToolbarKb", "key_restoreLastClosedTabOrWindowOrSession"
+      ];
+      for (const id of removeIds) {
+        const el = doc.getElementById(id);
+        if (el) el.remove();
+      }
+    } catch (_) {}
+  };
+  Services.obs.addObserver((subject) => { stripBrowserChrome(subject); }, "browser-delayed-startup-finished");
+} catch (_) {}
+`;
+
   const bundledProfileDir = path.join(PORTABLE_DIR, 'resources', 'app', 'gecko-profile');
   fs.mkdirSync(path.join(bundledProfileDir, 'chrome'), { recursive: true });
   fs.writeFileSync(path.join(bundledProfileDir, 'chrome', 'userChrome.css'), userChromeCss, 'utf8');
   fs.writeFileSync(path.join(bundledProfileDir, 'chrome', 'userContent.css'), userContentCss, 'utf8');
   fs.writeFileSync(path.join(bundledProfileDir, 'user.js'), userJsTemplate, 'utf8');
+  fs.writeFileSync(path.join(bundledProfileDir, 'fishtools.cfg'), fishtoolsCfg, 'utf8');
+  fs.writeFileSync(
+    path.join(bundledProfileDir, 'autoconfig.js'),
+    'pref("general.config.filename", "fishtools.cfg");\npref("general.config.obscure_value", 0);\npref("general.config.sandbox_enabled", false);\n',
+    'utf8'
+  );
 
   // Shared C Header for Win32 types & helpers
   const sharedWinHeader = `
@@ -1184,6 +1231,17 @@ void mainCRTStartup(void) {
     wcpy(dstContent, chromeDir); wcat(dstContent, L"\\\\userContent.css");
     CopyFileW(srcContent, dstContent, 0);
 
+    // Purge stale SessionStore & external handler caches so Gecko never restores a 0-tab blank window
+    WCHAR ssBackupDir[2048], ssFile1[2048], ssFile2[2048], ssFile3[2048];
+    wcpy(ssBackupDir, profileDir); wcat(ssBackupDir, L"\\\\sessionstore-backups");
+    delete_dir_recursive(ssBackupDir);
+    wcpy(ssFile1, profileDir); wcat(ssFile1, L"\\\\sessionstore.jsonlz4");
+    DeleteFileW(ssFile1);
+    wcpy(ssFile2, profileDir); wcat(ssFile2, L"\\\\sessionCheckpoints.json");
+    DeleteFileW(ssFile2);
+    wcpy(ssFile3, profileDir); wcat(ssFile3, L"\\\\handlers.json");
+    DeleteFileW(ssFile3);
+
     WCHAR loaderUrl[4096];
     path_to_file_url(loaderPath, loaderUrl);
 
@@ -1242,7 +1300,7 @@ void mainCRTStartup(void) {
     }
 
     // Zero-Copy Skinning: Hardlink Gecko runtime into AppData\\Local\\com.cutefishaep.ofts\\gecko-engine
-    // and run as "FishTools Studio.exe" with Enterprise Policies injected
+    // and run as "FishTools Studio.exe" with Enterprise Policies & AutoConfig injected
     WCHAR launchBin[2048];
     wcpy(launchBin, ffBin);
     if (appDataRoot[0]) {
@@ -1260,6 +1318,18 @@ void mainCRTStartup(void) {
         CreateDirectoryW(distDir, 0);
         wcpy(polPath, distDir); wcat(polPath, L"\\\\policies.json");
         write_ascii_file(polPath, "{\\"policies\\":{\\"DisableAppUpdate\\":true,\\"DisableTelemetry\\":true,\\"DontCheckDefaultBrowser\\":true,\\"DisableFirefoxStudies\\":true,\\"DisablePocket\\":true,\\"DisableFirefoxAccounts\\":true,\\"OverrideFirstRunPage\\":\\"\\",\\"OverridePostUpdatePage\\":\\"\\"}}\\n");
+
+        WCHAR defDir[2048], defPrefDir[2048], srcAutoCfg[2048], dstAutoCfg[2048], srcFtCfg[2048], dstFtCfg[2048];
+        wcpy(defDir, engineDir); wcat(defDir, L"\\\\defaults");
+        CreateDirectoryW(defDir, 0);
+        wcpy(defPrefDir, defDir); wcat(defPrefDir, L"\\\\pref");
+        CreateDirectoryW(defPrefDir, 0);
+        wcpy(srcAutoCfg, exeDir); wcat(srcAutoCfg, L"\\\\resources\\\\app\\\\gecko-profile\\\\autoconfig.js");
+        wcpy(dstAutoCfg, defPrefDir); wcat(dstAutoCfg, L"\\\\autoconfig.js");
+        CopyFileW(srcAutoCfg, dstAutoCfg, 0);
+        wcpy(srcFtCfg, exeDir); wcat(srcFtCfg, L"\\\\resources\\\\app\\\\gecko-profile\\\\fishtools.cfg");
+        wcpy(dstFtCfg, engineDir); wcat(dstFtCfg, L"\\\\fishtools.cfg");
+        CopyFileW(srcFtCfg, dstFtCfg, 0);
 
         WCHAR skinnedExe[2048];
         wcpy(skinnedExe, engineDir);

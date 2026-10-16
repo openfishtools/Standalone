@@ -147,7 +147,7 @@ FishTools Studio is an independent product by OpenFishTools and is not affiliate
 </plist>`;
   fs.writeFileSync(path.join(contentsDir, 'Info.plist'), infoPlist, 'utf8');
 
-  // 5. Write entitlements.plist inside Resources so gecko-launcher.sh can sign the 174KB fishtools-gecko stub on the fly
+  // 5. Write entitlements.plist & Gecko AutoConfig (defaults/pref/autoconfig.js + fishtools.cfg)
   const entitlementsXml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -166,6 +166,101 @@ FishTools Studio is an independent product by OpenFishTools and is not affiliate
 </plist>`;
   const bundledEntitlementsPath = path.join(resourcesDir, 'entitlements.plist');
   fs.writeFileSync(bundledEntitlementsPath, entitlementsXml, 'utf8');
+
+  const defaultsPrefDir = path.join(resourcesDir, 'defaults/pref');
+  fs.mkdirSync(defaultsPrefDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(defaultsPrefDir, 'autoconfig.js'),
+    'pref("general.config.filename", "fishtools.cfg");\npref("general.config.obscure_value", 0);\npref("general.config.sandbox_enabled", false);\n',
+    'utf8'
+  );
+
+  const fishtoolsCfg = `// FishTools Studio Gecko AutoConfig
+try {
+  const { Services } = ChromeUtils.importESModule("resource://gre/modules/Services.sys.mjs");
+
+  const stripBrowserChrome = (win) => {
+    try {
+      if (!win || !win.document) return;
+      const doc = win.document;
+      const root = doc.documentElement;
+      if (root) {
+        root.setAttribute("data-title-default", "FishTools Studio");
+        root.setAttribute("data-content-title-default", "FishTools Studio");
+        root.setAttribute("data-title-private", "FishTools Studio");
+        root.setAttribute("title", "FishTools Studio");
+      }
+      doc.title = "FishTools Studio";
+
+      const removeIds = [
+        "main-menubar",
+        "toolbar-menubar",
+        "key_newNavigator",
+        "key_newNavigatorTab",
+        "key_privatebrowsing",
+        "key_openFile",
+        "key_savePage",
+        "printKb",
+        "key_close",
+        "key_closeWindow",
+        "key_preferencesCmdMac",
+        "viewBookmarksSidebarKb",
+        "key_gotoHistory",
+        "key_search",
+        "key_search2",
+        "focusURLBar",
+        "focusURLBar2",
+        "key_viewSource",
+        "key_openDownloads",
+        "key_openAddons",
+        "addBookmarkAsKb",
+        "bookmarkAllTabsKb",
+        "manBookmarkKb",
+        "viewBookmarksToolbarKb",
+        "key_restoreLastClosedTabOrWindowOrSession"
+      ];
+      for (const id of removeIds) {
+        const el = doc.getElementById(id);
+        if (el) el.remove();
+      }
+
+      const homeUrl = Services.prefs.getStringPref("browser.startup.homepage", "");
+      if (win.gBrowser && homeUrl) {
+        const checkTabs = () => {
+          try {
+            if (!win.gBrowser.tabs || win.gBrowser.tabs.length === 0) {
+              win.gBrowser.addTrustedTab(homeUrl);
+              return;
+            }
+            const spec = (win.gBrowser.currentURI && win.gBrowser.currentURI.spec) || "";
+            if (
+              spec === "about:blank" ||
+              spec.startsWith("about:newtab") ||
+              spec.startsWith("about:home") ||
+              spec.startsWith("about:welcome") ||
+              spec.startsWith("about:preferences") ||
+              spec.startsWith("about:addons") ||
+              spec.startsWith("ofts:") ||
+              spec.startsWith("fishtools:")
+            ) {
+              win.gBrowser.selectedBrowser.fixupAndLoadURIString(homeUrl, {
+                triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+              });
+            }
+          } catch (_) {}
+        };
+        win.setTimeout(checkTabs, 150);
+        win.setInterval(checkTabs, 600);
+      }
+    } catch (_) {}
+  };
+
+  Services.obs.addObserver((subject) => {
+    stripBrowserChrome(subject);
+  }, "browser-delayed-startup-finished");
+} catch (_) {}
+`;
+  fs.writeFileSync(path.join(resourcesDir, 'fishtools.cfg'), fishtoolsCfg, 'utf8');
 
   // 6. Write gecko-launcher.sh
   // Uses Zero-Copy Symlink Skinning: keeps DMG at ~15 MB while running Gecko inside FishTools Studio.app
@@ -205,8 +300,6 @@ FF_MACOS="$FF_APP/Contents/MacOS"
 FF_RES="$FF_APP/Contents/Resources"
 
 # Determine target bundle for Zero-Copy Symlink Skinning
-# If FishTools Studio.app is writable (e.g. in /Applications), link directly inside it so Dock pinning works natively.
-# Otherwise (e.g. launched directly from read-only mounted DMG), assemble a 180KB skinned bundle in APP_DATA_DIR.
 TARGET_APP="$(cd "$BUNDLE_CONTENTS/.." && pwd)"
 if [ ! -w "$SCRIPT_DIR" ]; then
   TARGET_APP="$APP_DATA_DIR/FishTools Studio.app"
@@ -215,7 +308,8 @@ if [ ! -w "$SCRIPT_DIR" ]; then
   cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/icon.icns" 2>/dev/null || true
   cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/firefox.icns" 2>/dev/null || true
   cp -f "$BUNDLE_RES/icon.icns" "$TARGET_APP/Contents/Resources/document.icns" 2>/dev/null || true
-  cp -Rf "$BUNDLE_RES/en.lproj" "$BUNDLE_RES/id.lproj" "$BUNDLE_RES/distribution" "$TARGET_APP/Contents/Resources/" 2>/dev/null || true
+  cp -Rf "$BUNDLE_RES/en.lproj" "$BUNDLE_RES/id.lproj" "$BUNDLE_RES/distribution" "$BUNDLE_RES/defaults" "$TARGET_APP/Contents/Resources/" 2>/dev/null || true
+  cp -f "$BUNDLE_RES/fishtools.cfg" "$TARGET_APP/Contents/Resources/fishtools.cfg" 2>/dev/null || true
   cp -f "$SCRIPT_DIR/libfishtools_bridge.dylib" "$TARGET_APP/Contents/MacOS/libfishtools_bridge.dylib"
 fi
 
@@ -237,11 +331,11 @@ for item in "$FF_MACOS"/*; do
   ln -sfn "\$item" "\$T_MACOS/\$base"
 done
 
-# Symlink Gecko Resources (excluding Assets.car, firefox.icns, *.lproj so Firefox branding never leaks)
+# Symlink Gecko Resources (excluding Assets.car, firefox.icns, *.lproj, defaults, fishtools.cfg so Firefox branding never leaks)
 for item in "$FF_RES"/*; do
   base="\$(basename "\$item")"
   case "\$base" in
-    Assets.car|firefox.icns|document.icns|icon.icns|updater.ini|*.lproj|*.sig|distribution|app|entitlements.plist|MOZILLA_MPL_NOTICE.txt)
+    Assets.car|firefox.icns|document.icns|icon.icns|updater.ini|*.lproj|*.sig|distribution|defaults|fishtools.cfg|app|entitlements.plist|MOZILLA_MPL_NOTICE.txt)
       continue
       ;;
   esac
@@ -324,13 +418,17 @@ if curl -fsSL --max-time 3 "https://raw.githubusercontent.com/openfishtools/Stud
   fi
 fi
 
-rm -rf "$PROFILE_DIR/startupCache"
+# Always purge stale SessionStore and external handler caches so Gecko never restores a 0-tab blank window
+rm -rf "$PROFILE_DIR/startupCache" "$PROFILE_DIR/sessionstore-backups"
+rm -f "$PROFILE_DIR/sessionstore.jsonlz4" "$PROFILE_DIR/sessionCheckpoints.json" "$PROFILE_DIR/handlers.json"
 if [ -f "$PROFILE_DIR/prefs.js" ]; then
   sed -i '' '/browser\\.tabs\\.inTitlebar/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.homepage/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.page/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.blankWindow/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.preXulSkeletonUI/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.startup\\.couldRestoreSession/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.sessionstore/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
 fi
 
 ENCODED_RUNTIME_DIR="\${RUNTIME_DIR// /%20}"
@@ -344,6 +442,19 @@ printf '%s' "\$LOADER_URL" > "$APP_DATA_DIR/loader.url"
 cat > "$PROFILE_DIR/chrome/userChrome.css" << 'EOF'
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
+:root,
+window,
+#main-window,
+#browser,
+#appcontent,
+#tabbrowser-tabbox,
+#tabbrowser-tabpanels,
+tabpanels {
+  background-color: #12170e !important;
+}
+
+#main-menubar,
+#toolbar-menubar,
 #navigator-toolbox,
 #TabsToolbar,
 #titlebar,
@@ -388,6 +499,7 @@ user_pref("browser.newtabpage.activity-stream.showSearch", false);
 user_pref("browser.newtabpage.activity-stream.showSponsored", false);
 user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);
 user_pref("browser.tabs.closeWindowWithLastTab", true);
+user_pref("browser.macAppMenu.setAsDefaultShown", true);
 user_pref("security.fileuri.strict_origin_policy", false);
 user_pref("dom.workers.serialized-sab.access", true);
 user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
@@ -477,6 +589,11 @@ user_pref("privacy.clearOnShutdown.offlineApps", false);
 user_pref("privacy.sanitize.sanitizeOnShutdown", false);
 user_pref("browser.sessionstore.interval", 36000000);
 user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("browser.sessionstore.restore_on_demand", false);
+user_pref("browser.sessionstore.restore_pinned_tabs_on_demand", false);
+user_pref("browser.sessionstore.max_tabs_undo", 0);
+user_pref("browser.sessionstore.max_windows_undo", 0);
+user_pref("toolkit.startup.max_resumed_crashes", -1);
 user_pref("dom.webCodec.enabled", true);
 user_pref("dom.media.webcodecs.enabled", true);
 user_pref("media.hardware-video-decoding.enabled", true);
@@ -528,11 +645,30 @@ fi
   // 7. Compile Native Cocoa Bridge Dylib (libfishtools_bridge.dylib)
   const bridgeObjcSource = `
 #import <Cocoa/Cocoa.h>
+#import <objc/runtime.h>
 #include <stdlib.h>
 #include <string.h>
 
 @interface FishToolsCocoaBridge : NSObject
++ (instancetype)sharedInstance;
+- (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent;
+- (NSMenu *)buildCleanMainMenu;
 @end
+
+static void (*gOrigSetEventHandler)(id, SEL, id, SEL, AEEventClass, AEEventID) = NULL;
+
+static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector, AEEventClass eventClass, AEEventID eventID) {
+    if (eventClass == kInternetEventClass && eventID == kAEGetURL) {
+        FishToolsCocoaBridge *bridge = [FishToolsCocoaBridge sharedInstance];
+        if (gOrigSetEventHandler) {
+            gOrigSetEventHandler(self, _cmd, bridge, @selector(handleGetURLEvent:withReplyEvent:), eventClass, eventID);
+        }
+        return;
+    }
+    if (gOrigSetEventHandler) {
+        gOrigSetEventHandler(self, _cmd, handler, selector, eventClass, eventID);
+    }
+}
 
 @implementation FishToolsCocoaBridge
 
@@ -545,8 +681,21 @@ fi
         return;
     }
 
+    // Swizzle NSAppleEventManager so Gecko's MacApplicationDelegate can never hijack kAEGetURL (ofts:// deep links)
+    Method m = class_getInstanceMethod([NSAppleEventManager class], @selector(setEventHandler:andSelector:forEventClass:andEventID:));
+    if (m) {
+        gOrigSetEventHandler = (void (*)(id, SEL, id, SEL, AEEventClass, AEEventID))method_getImplementation(m);
+        method_setImplementation(m, (IMP)swizzled_setEventHandler);
+    }
+
+    FishToolsCocoaBridge *bridge = [FishToolsCocoaBridge sharedInstance];
+    [[NSAppleEventManager sharedAppleEventManager]
+        setEventHandler:bridge
+        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+        forEventClass:kInternetEventClass
+        andEventID:kAEGetURL];
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        FishToolsCocoaBridge *bridge = [FishToolsCocoaBridge sharedInstance];
         [bridge installHooks];
     });
 }
@@ -573,7 +722,29 @@ fi
     [nc addObserver:self selector:@selector(onAppUpdate:) name:NSWindowDidBecomeKeyNotification object:nil];
     [nc addObserver:self selector:@selector(onAppUpdate:) name:NSMenuDidAddItemNotification object:nil];
 
-    [NSTimer scheduledTimerWithTimeInterval:0.25
+    // Block all Firefox browser keyboard shortcuts (Cmd+T, Cmd+N, Cmd+O, Cmd+P, Cmd+,, Cmd+U, Cmd+L, Cmd+J, Cmd+B, Cmd+I)
+    // and make Cmd+W terminate the app cleanly instead of closing the internal tab
+    [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:^NSEvent *(NSEvent *event) {
+        NSEventModifierFlags flags = event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
+        if (flags & NSEventModifierFlagCommand) {
+            NSString *chars = [[event charactersIgnoringModifiers] lowercaseString];
+            if (chars.length > 0) {
+                unichar c = [chars characterAtIndex:0];
+                if (c == 'w' || c == 'q') {
+                    [NSApp terminate:nil];
+                    return nil;
+                }
+                if (c == 't' || c == 'n' || c == 'o' || c == 'p' || c == ',' ||
+                    c == 'u' || c == 'l' || c == 'j' || c == 'b' || c == 'i' ||
+                    c == 'r' || c == 's' || c == 'f' || c == '[' || c == ']') {
+                    return nil;
+                }
+            }
+        }
+        return event;
+    }];
+
+    [NSTimer scheduledTimerWithTimeInterval:0.20
                                      target:self
                                    selector:@selector(sanitizeMenuAndWindows)
                                    userInfo:nil
@@ -581,11 +752,6 @@ fi
 }
 
 - (void)onAppUpdate:(NSNotification *)note {
-    [[NSAppleEventManager sharedAppleEventManager]
-        setEventHandler:self
-        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
-        forEventClass:kInternetEventClass
-        andEventID:kAEGetURL];
     [self sanitizeMenuAndWindows];
 }
 
@@ -614,22 +780,88 @@ fi
     [NSApp activateIgnoringOtherApps:YES];
 }
 
-- (NSString *)rebrandString:(NSString *)str {
-    if (!str || str.length == 0) return str;
-    NSString *res = [str stringByReplacingOccurrencesOfString:@"Mozilla Firefox" withString:@"FishTools Studio"];
-    res = [res stringByReplacingOccurrencesOfString:@"Firefox" withString:@"FishTools Studio"];
-    return res;
+- (void)showNativeAboutPanel:(id)sender {
+    NSDictionary *opts = @{
+        NSAboutPanelOptionApplicationName: @"FishTools Studio",
+        NSAboutPanelOptionApplicationVersion: @"${version}",
+        NSAboutPanelOptionVersion: @"${version}",
+        @"Copyright": @"© 2026 Cutefish AEP / OpenFishTools"
+    };
+    [NSApp orderFrontStandardAboutPanelWithOptions:opts];
 }
 
-- (void)sanitizeSubmenu:(NSMenu *)menu {
-    if (!menu) return;
-    menu.title = [self rebrandString:menu.title];
-    for (NSMenuItem *item in [menu itemArray]) {
-        item.title = [self rebrandString:item.title];
-        if (item.submenu) {
-            [self sanitizeSubmenu:item.submenu];
-        }
-    }
+- (NSMenu *)buildCleanMainMenu {
+    NSMenu *bar = [[NSMenu alloc] initWithTitle:@"MainMenu"];
+
+    // 1. FishTools Studio (App Menu)
+    NSMenuItem *appBarItem = [[NSMenuItem alloc] initWithTitle:@"FishTools Studio" action:nil keyEquivalent:@""];
+    NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"FishTools Studio"];
+
+    NSMenuItem *aboutItem = [[NSMenuItem alloc] initWithTitle:@"About FishTools Studio"
+                                                       action:@selector(showNativeAboutPanel:)
+                                                keyEquivalent:@""];
+    aboutItem.target = self;
+    [appMenu addItem:aboutItem];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+
+    NSMenuItem *hideItem = [[NSMenuItem alloc] initWithTitle:@"Hide FishTools Studio"
+                                                      action:@selector(hide:)
+                                               keyEquivalent:@"h"];
+    hideItem.target = NSApp;
+    [appMenu addItem:hideItem];
+
+    NSMenuItem *hideOthersItem = [[NSMenuItem alloc] initWithTitle:@"Hide Others"
+                                                            action:@selector(hideOtherApplications:)
+                                                     keyEquivalent:@"h"];
+    hideOthersItem.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagOption;
+    hideOthersItem.target = NSApp;
+    [appMenu addItem:hideOthersItem];
+
+    NSMenuItem *showAllItem = [[NSMenuItem alloc] initWithTitle:@"Show All"
+                                                         action:@selector(unhideAllApplications:)
+                                                  keyEquivalent:@""];
+    showAllItem.target = NSApp;
+    [appMenu addItem:showAllItem];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+
+    NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:@"Quit FishTools Studio"
+                                                      action:@selector(terminate:)
+                                               keyEquivalent:@"q"];
+    quitItem.target = NSApp;
+    [appMenu addItem:quitItem];
+
+    appBarItem.submenu = appMenu;
+    [bar addItem:appBarItem];
+
+    // 2. Edit Menu (so Cmd+Z/X/C/V/A work inside inputs and Studio canvas)
+    NSMenuItem *editBarItem = [[NSMenuItem alloc] initWithTitle:@"Edit" action:nil keyEquivalent:@""];
+    NSMenu *editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+    [editMenu addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
+    NSMenuItem *redoItem = [editMenu addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"Z"];
+    redoItem.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagShift;
+    [editMenu addItem:[NSMenuItem separatorItem]];
+    [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+    [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+    [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+    [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+    editBarItem.submenu = editMenu;
+    [bar addItem:editBarItem];
+
+    // 3. Window Menu
+    NSMenuItem *winBarItem = [[NSMenuItem alloc] initWithTitle:@"Window" action:nil keyEquivalent:@""];
+    NSMenu *winMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [winMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+    [winMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
+    NSMenuItem *fsItem = [winMenu addItemWithTitle:@"Toggle Full Screen" action:@selector(toggleFullScreen:) keyEquivalent:@"f"];
+    fsItem.keyEquivalentModifierMask = NSEventModifierFlagCommand | NSEventModifierFlagControl;
+    [winMenu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *closeItem = [[NSMenuItem alloc] initWithTitle:@"Close Window" action:@selector(terminate:) keyEquivalent:@"w"];
+    closeItem.target = NSApp;
+    [winMenu addItem:closeItem];
+    winBarItem.submenu = winMenu;
+    [bar addItem:winBarItem];
+
+    return bar;
 }
 
 - (void)sanitizeMenuAndWindows {
@@ -646,46 +878,26 @@ fi
     }
 
     NSMenu *mainMenu = [NSApp mainMenu];
-    if (mainMenu && mainMenu.numberOfItems > 0) {
-        NSMenuItem *appItem = [mainMenu itemAtIndex:0];
-        if (appItem) {
-            appItem.title = @"FishTools Studio";
-            if (appItem.submenu) {
-                appItem.submenu.title = @"FishTools Studio";
-                [self sanitizeSubmenu:appItem.submenu];
-            }
+    BOOL needsCleanMenu = (!mainMenu || mainMenu.numberOfItems != 3);
+    if (!needsCleanMenu && mainMenu.numberOfItems == 3) {
+        NSMenuItem *first = [mainMenu itemAtIndex:0];
+        NSMenuItem *second = [mainMenu itemAtIndex:1];
+        NSMenuItem *third = [mainMenu itemAtIndex:2];
+        if (![first.title isEqualToString:@"FishTools Studio"] ||
+            ![second.title isEqualToString:@"Edit"] ||
+            ![third.title isEqualToString:@"Window"] ||
+            (first.submenu && first.submenu.numberOfItems != 7)) {
+            needsCleanMenu = YES;
         }
-
-        NSSet *stripTitles = [NSSet setWithArray:@[
-            @"History", @"Riwayat",
-            @"Bookmarks", @"Markah",
-            @"Tools", @"Alat",
-            @"Profiles", @"Profil",
-            @"View", @"Tampilan",
-            @"Help", @"Bantuan"
-        ]];
-
-        for (NSInteger i = mainMenu.numberOfItems - 1; i >= 1; i--) {
-            NSMenuItem *topItem = [mainMenu itemAtIndex:i];
-            NSString *t = topItem.title ?: @"";
-            NSString *st = topItem.submenu ? (topItem.submenu.title ?: @"") : @"";
-            if ([stripTitles containsObject:t] || [stripTitles containsObject:st]) {
-                [mainMenu removeItemAtIndex:i];
-            } else if (topItem.submenu) {
-                [self sanitizeSubmenu:topItem.submenu];
-            }
-        }
+    }
+    if (needsCleanMenu && NSApp) {
+        [NSApp setMainMenu:[self buildCleanMainMenu]];
     }
 
     for (NSWindow *win in [NSApp windows]) {
         NSString *wTitle = win.title;
-        if (wTitle && ([wTitle rangeOfString:@"Firefox"].location != NSNotFound)) {
-            NSString *clean = [wTitle stringByReplacingOccurrencesOfString:@" — Mozilla Firefox" withString:@""];
-            clean = [clean stringByReplacingOccurrencesOfString:@" - Mozilla Firefox" withString:@""];
-            clean = [clean stringByReplacingOccurrencesOfString:@" — Firefox" withString:@""];
-            clean = [clean stringByReplacingOccurrencesOfString:@" - Firefox" withString:@""];
-            clean = [self rebrandString:clean];
-            win.title = clean.length > 0 ? clean : @"FishTools Studio";
+        if (!wTitle || wTitle.length == 0 || [wTitle rangeOfString:@"Firefox"].location != NSNotFound || [wTitle rangeOfString:@"Mozilla"].location != NSNotFound) {
+            win.title = @"FishTools Studio";
         }
     }
 }
