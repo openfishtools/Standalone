@@ -192,6 +192,7 @@ try {
         if (host === "studio.cutefish.my.id" || host.endsWith(".cutefish.my.id")) {
           const w = doc.defaultView.wrappedJSObject || doc.defaultView;
           w.__OFT_NATIVE_APP__ = true;
+          w.__OFT_APP__ = true;
           w.__OFT_PACKAGE_NAME__ = "com.cutefishaep.ofts";
         }
       } catch (_) {}
@@ -510,6 +511,11 @@ cat > "$PROFILE_DIR/chrome/userContent.css" << 'EOF'
 @-moz-document url-prefix("about:home"), url-prefix("about:newtab"), url-prefix("about:welcome"), url-prefix("about:blank") {
   body, html {
     background-color: #12170e !important;
+    display: none !important;
+  }
+}
+@-moz-document domain("studio.cutefish.my.id") {
+  #btn-install-app {
     display: none !important;
   }
 }
@@ -847,9 +853,12 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
 
     [NSApp activateIgnoringOtherApps:YES];
     for (NSWindow *win in [NSApp windows]) {
-        if ([win canBecomeKeyWindow] || [win isVisible]) {
+        NSRect frame = win.frame;
+        if ((win.styleMask & NSWindowStyleMaskTitled) != 0 && frame.size.width > 300 && frame.size.height > 300) {
             [win makeKeyAndOrderFront:nil];
             [win orderFrontRegardless];
+        } else if ((win.styleMask & NSWindowStyleMaskTitled) == 0 && frame.size.width <= 200 && frame.size.height <= 200) {
+            [win orderOut:nil];
         }
     }
 }
@@ -973,6 +982,13 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
         }
 
         for (NSWindow *win in [NSApp windows]) {
+            NSRect frame = win.frame;
+            if ((win.styleMask & NSWindowStyleMaskTitled) == 0 && frame.size.width <= 200 && frame.size.height <= 200) {
+                if ([win isVisible]) {
+                    [win orderOut:nil];
+                }
+                continue;
+            }
             NSString *wTitle = win.title;
             if (!wTitle || wTitle.length == 0 || [wTitle rangeOfString:@"Firefox"].location != NSNotFound || [wTitle rangeOfString:@"Mozilla"].location != NSNotFound) {
                 win.title = @"FishTools Studio";
@@ -1101,7 +1117,7 @@ int main(int argc, char *argv[]) {
                 }
                 NSRunningApplication *running = [NSRunningApplication runningApplicationWithProcessIdentifier:existingPid];
                 if (running) {
-                    [running activateWithOptions:(NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
+                    [running activateWithOptions:NSApplicationActivateIgnoringOtherApps];
                     return 0;
                 }
             }

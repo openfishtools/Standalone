@@ -429,6 +429,11 @@ RegDeleteTreeW
     display: none !important;
   }
 }
+@-moz-document domain("studio.cutefish.my.id") {
+  #btn-install-app {
+    display: none !important;
+  }
+}
 `;
 
   const userJsTemplate = `user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
@@ -598,6 +603,7 @@ try {
       if (host === "studio.cutefish.my.id" || host.endsWith(".cutefish.my.id")) {
         const w = doc.defaultView.wrappedJSObject || doc.defaultView;
         w.__OFT_NATIVE_APP__ = true;
+        w.__OFT_APP__ = true;
         w.__OFT_PACKAGE_NAME__ = "com.cutefishaep.ofts";
       }
     } catch (_) {}
