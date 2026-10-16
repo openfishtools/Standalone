@@ -1,0 +1,107 @@
+name: Build & Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+      - '*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Standalone Packages & Release
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Standalone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout Studio repository
+        uses: actions/checkout@v4
+        with:
+          repository: openfishtools/Studio
+          path: .cache/Studio
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ensure lld-link is available for Windows cross-compilation
+        run: |
+          if ! find "$HOME/.rustup/toolchains" -name "lld-link" 2>/dev/null | grep -q "lld-link"; then
+            rustup toolchain install stable --profile minimal
+          fi
+
+      - name: Resolve version and latest tag
+        id: version
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version || '1.0.0'")
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            RAW_TAG="${GITHUB_REF_NAME}"
+            VERSION="${RAW_TAG#v}"
+            TAG="v${VERSION}"
+          else
+            LATEST_TAG=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n 1)
+            if [ -n "$LATEST_TAG" ]; then
+              TAG_VER="${LATEST_TAG#v}"
+            else
+              TAG_VER="$PKG_VER"
+            fi
+            if [ "$PKG_VER" != "$TAG_VER" ]; then
+              VERSION="$PKG_VER"
+            else
+              VERSION="$TAG_VER"
+            fi
+            TAG="v${VERSION}"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -f "$TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$TAG" --force
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION (tag: $TAG)"
+
+      - name: Build macOS, Windows, and Android standalone packages
+        env:
+          APP_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          npm run build
+          mkdir -p release-assets
+          cp "dist-mac/FishTools_Studio_${APP_VERSION}_macOS_Universal.dmg" release-assets/
+          cp "dist-win/FishTools_Studio_${APP_VERSION}_Windows_x64_Setup.exe" release-assets/
+          cp "dist-win/FishTools_Studio_${APP_VERSION}_Windows_x64_Portable.zip" release-assets/
+          cp "dist-android/FishTools_Studio_${APP_VERSION}_Android.apk" release-assets/
+          ls -lh release-assets/
+
+      - name: Generate release notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          cat > release_notes.md << EOF
+          FishTools Studio v${VERSION} standalone build for macOS, Windows, and Android.
+
+          ### Files
+          - \`FishTools_Studio_${VERSION}_macOS_Universal.dmg\` — macOS Universal installer
+          - \`FishTools_Studio_${VERSION}_Windows_x64_Setup.exe\` — Windows x64 installer
+          - \`FishTools_Studio_${VERSION}_Windows_x64_Portable.zip\` — Windows x64 portable archive
+          - \`FishTools_Studio_${VERSION}_Android.apk\` — Android package (\`com.cutefishaep.ofts\`)
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: "FishTools Studio v${{ steps.version.outputs.VERSION }}"
+          body_path: release_notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+          make_latest: true

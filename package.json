@@ -1,0 +1,13 @@
+{
+  "name": "fishtools-studio-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone build scripts for FishTools Studio (macOS, Windows, Android)",
+  "scripts": {
+    "manifest": "node scripts/generate-manifest.js",
+    "build:mac": "node scripts/build-mac.js",
+    "build:win": "node scripts/build-win.js",
+    "build:android": "node scripts/build-android.js",
+    "build": "node scripts/build-mac.js && node scripts/build-win.js && node scripts/build-android.js"
+  }
+}

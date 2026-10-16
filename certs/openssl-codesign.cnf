@@ -1,0 +1,19 @@
+[req]
+distinguished_name = req_dn
+x509_extensions = v3_codesign
+prompt = no
+
+[req_dn]
+C = ID
+ST = DKI Jakarta
+L = Jakarta
+O = OpenFishTools Foundation
+OU = Desktop and Mobile Engineering
+CN = OpenFishTools Studio Official Release
+
+[v3_codesign]
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature
+extendedKeyUsage = codeSigning
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always

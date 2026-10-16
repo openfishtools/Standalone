@@ -1,0 +1,11 @@
+node_modules/
+dist-mac/
+dist-win/
+dist-android/
+dist/
+.cache/
+.tmp-build/
+shell/studio/
+shell/manifest.json
+.DS_Store
+*.log
