@@ -406,7 +406,7 @@ int main(int argc, char *argv[]) {
   const watchdogCPath = path.join(OUT_DIR, 'watchdog.c');
   const watchdogBinPath = path.join(macosDir, 'window-watchdog');
   fs.writeFileSync(watchdogCPath, watchdogSource, 'utf8');
-  execSync(`clang -O2 -arch x86_64 -arch arm64 -framework ApplicationServices -framework CoreFoundation "${watchdogCPath}" -o "${watchdogBinPath}"`);
+  execSync(`clang -O2 -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 -framework ApplicationServices -framework CoreFoundation "${watchdogCPath}" -o "${watchdogBinPath}"`);
   fs.unlinkSync(watchdogCPath);
   fs.chmodSync(watchdogBinPath, 0o755);
 
@@ -435,7 +435,7 @@ int main(int argc, char *argv[]) {
   const cFilePath = path.join(OUT_DIR, 'main.c');
   const binPath = path.join(macosDir, 'fishtools-studio');
   fs.writeFileSync(cFilePath, cSource, 'utf8');
-  execSync(`clang -O2 -arch x86_64 -arch arm64 "${cFilePath}" -o "${binPath}"`);
+  execSync(`clang -O2 -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 "${cFilePath}" -o "${binPath}"`);
   fs.unlinkSync(cFilePath);
   fs.chmodSync(binPath, 0o755);
 
