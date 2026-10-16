@@ -1034,7 +1034,9 @@ function buildAndroidApk() {
   const tmpDir = path.join(OUT_DIR, '.tmp-apk');
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const axmlBuf = buildBinaryAndroidManifest(100, manifest.version);
+  const verParts = String(manifest.version || '1.0.2').split('.').map((n) => parseInt(n, 10) || 0);
+  const versionCode = (verParts[0] || 1) * 100 + (verParts[1] || 0) * 10 + (verParts[2] || 0);
+  const axmlBuf = buildBinaryAndroidManifest(versionCode, manifest.version);
   const arscBuf = buildResourcesArsc();
   const dexBuf = buildClassesDex();
   const iconBuf = fs.readFileSync(path.join(EXP_ROOT, 'icons/icon.png'));

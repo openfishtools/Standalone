@@ -83,7 +83,7 @@ function walkDir(dirPath, relPrefix, outList) {
 function generateManifest() {
   const studioRoot = resolveStudioDir();
 
-  let version = '1.0.1';
+  let version = '1.0.2';
   const pkgPath = path.join(STANDALONE_ROOT, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));

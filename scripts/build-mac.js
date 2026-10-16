@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { execSync } = require('child_process');
 const { generateManifest } = require('./generate-manifest');
 
@@ -7,6 +8,149 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT_DIR, 'dist-mac');
 const APP_NAME = 'FishTools Studio.app';
 const APP_PATH = path.join(OUT_DIR, APP_NAME);
+
+function findHostFirefoxBundle() {
+  const cachedFf = path.join(ROOT_DIR, '.cache/Firefox.app');
+  const candidates = [
+    '/Applications/Firefox.app',
+    '/Applications/Firefox Developer Edition.app',
+    path.join(process.env.HOME || '', 'Applications/Firefox.app'),
+    '/Applications/Waterfox.app',
+    cachedFf
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'Contents/MacOS/firefox')) &&
+        fs.existsSync(path.join(candidate, 'Contents/MacOS/XUL'))) {
+      return candidate;
+    }
+  }
+
+  console.log('[macOS Build] Host Firefox.app not found locally; downloading official Mozilla Firefox Universal runtime...');
+  const tmpDmg = '/tmp/ofts_firefox_runtime.dmg';
+  const mntDir = '/tmp/ofts_ff_mnt';
+  fs.mkdirSync(path.dirname(cachedFf), { recursive: true });
+  execSync(`curl -fsSL "https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US" -o "${tmpDmg}"`, { stdio: 'inherit' });
+  try {
+    execSync(`hdiutil detach "${mntDir}" -force 2>/dev/null || true`);
+    fs.mkdirSync(mntDir, { recursive: true });
+    execSync(`hdiutil attach "${tmpDmg}" -nobrowse -readonly -mountpoint "${mntDir}"`, { stdio: 'ignore' });
+    execSync(`ditto "${mntDir}/Firefox.app" "${cachedFf}"`);
+  } finally {
+    execSync(`hdiutil detach "${mntDir}" -force 2>/dev/null || true`);
+    fs.rmSync(tmpDmg, { force: true });
+  }
+  if (fs.existsSync(path.join(cachedFf, 'Contents/MacOS/firefox'))) {
+    return cachedFf;
+  }
+  throw new Error('Failed to obtain Firefox.app runtime bundle.');
+}
+
+/**
+ * In-place binary patcher for Stored (uncompressed) entries inside Mozilla omni.ja (mozjar).
+ * Preserves exact byte offsets and updates CRC32 in both Central Directory and Local File Header.
+ */
+function patchOmniJaBranding(omniJaPath) {
+  if (!fs.existsSync(omniJaPath)) return;
+  const buf = fs.readFileSync(omniJaPath);
+  let patchedCount = 0;
+
+  const targetNames = [
+    'chrome/id/locale/branding/brand.properties',
+    'chrome/en-US/locale/branding/brand.properties',
+    'localization/id/branding/brand.ftl',
+    'localization/en-US/branding/brand.ftl',
+    'chrome/browser/content/branding/about-logo.svg',
+    'chrome/browser/content/branding/about-wordmark.svg',
+    'chrome/browser/content/branding/firefox-wordmark.svg'
+  ];
+
+  function buildPaddedReplacement(entryName, origBuf) {
+    const targetLen = origBuf.length;
+    let content = '';
+    if (entryName.endsWith('brand.properties')) {
+      // Exact 84-byte replacement for brand.properties
+      content = [
+        'brandShorterName = OFTS',
+        'brandShortName = FishTools',
+        'brandFullName = FishTools Studio',
+        ''
+      ].join('\n');
+    } else if (entryName.endsWith('brand.ftl')) {
+      content = [
+        '-brand-shorter-name = FishTools Studio',
+        '-brand-short-name = FishTools Studio',
+        '-brand-shortcut-name = FishTools Studio',
+        '-brand-full-name = FishTools Studio',
+        '-brand-product-name = FishTools Studio',
+        '-vendor-short-name = FishTools',
+        'trademarkInfo = FishTools Studio.'
+      ].join('\n');
+    } else if (entryName.endsWith('.svg')) {
+      content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32"><text x="0" y="24" fill="#aef380" font-family="sans-serif" font-weight="bold" font-size="16">FishTools Studio</text></svg>`;
+    } else {
+      return null;
+    }
+
+    let raw = Buffer.from(content, 'utf8');
+    if (raw.length > targetLen) {
+      raw = raw.subarray(0, targetLen);
+    } else if (raw.length < targetLen) {
+      const diff = targetLen - raw.length;
+      if (entryName.endsWith('.svg')) {
+        const padComment = diff >= 7
+          ? `<!--${' '.repeat(diff - 7)}-->`
+          : ' '.repeat(diff);
+        raw = Buffer.concat([raw, Buffer.from(padComment, 'utf8')]);
+      } else {
+        const padSpaces = ' '.repeat(Math.max(0, diff - 1)) + (diff >= 1 ? '\n' : '');
+        raw = Buffer.concat([raw, Buffer.from(padSpaces, 'utf8')]);
+      }
+    }
+    return raw;
+  }
+
+  for (const entryName of targetNames) {
+    const nameBuf = Buffer.from(entryName, 'utf8');
+    let cdHdr = -1;
+    let lhHdr = -1;
+    let pos = 0;
+    while ((pos = buf.indexOf(nameBuf, pos)) !== -1) {
+      if (pos >= 46 && buf.readUInt32LE(pos - 46) === 0x02014b50) {
+        const nameLen = buf.readUInt16LE(pos - 46 + 28);
+        if (nameLen === nameBuf.length) cdHdr = pos - 46;
+      } else if (pos >= 30 && buf.readUInt32LE(pos - 30) === 0x04034b50) {
+        const nameLen = buf.readUInt16LE(pos - 30 + 26);
+        if (nameLen === nameBuf.length) lhHdr = pos - 30;
+      }
+      pos += nameBuf.length;
+    }
+
+    if (cdHdr !== -1 && lhHdr !== -1) {
+      const method = buf.readUInt16LE(lhHdr + 8);
+      const compSize = buf.readUInt32LE(lhHdr + 18);
+      const uncompSize = buf.readUInt32LE(lhHdr + 22);
+      const nameLen = buf.readUInt16LE(lhHdr + 26);
+      const extraLen = buf.readUInt16LE(lhHdr + 28);
+      if (method === 0 && compSize === uncompSize && compSize > 0) {
+        const dataStart = lhHdr + 30 + nameLen + extraLen;
+        const origSlice = buf.subarray(dataStart, dataStart + compSize);
+        const replacement = buildPaddedReplacement(entryName, origSlice);
+        if (replacement && replacement.length === compSize) {
+          replacement.copy(buf, dataStart);
+          const newCrc = zlib.crc32(replacement) >>> 0;
+          buf.writeUInt32LE(newCrc, lhHdr + 14);
+          buf.writeUInt32LE(newCrc, cdHdr + 16);
+          patchedCount++;
+        }
+      }
+    }
+  }
+
+  if (patchedCount > 0) {
+    fs.writeFileSync(omniJaPath, buf);
+    console.log(`[macOS Build] Patched ${patchedCount} branding resources inside ${path.basename(omniJaPath)}`);
+  }
+}
 
 function buildMacApp() {
   const t0 = Date.now();
@@ -17,33 +161,194 @@ function buildMacApp() {
   const loaderHtml = fs.readFileSync(path.join(ROOT_DIR, 'shell/loader.html'), 'utf8');
   fs.writeFileSync(path.join(ROOT_DIR, 'shell/index.html'), loaderHtml, 'utf8');
 
+  const hostFirefoxApp = findHostFirefoxBundle();
+  console.log(`[macOS Build] Extracting Gecko runtime from: ${hostFirefoxApp}`);
+
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+
+  // 1. Copy base Gecko bundle into FishTools Studio.app
+  execSync(`ditto "${hostFirefoxApp}" "${APP_PATH}"`);
+
   const contentsDir = path.join(APP_PATH, 'Contents');
   const macosDir = path.join(contentsDir, 'MacOS');
   const resourcesDir = path.join(contentsDir, 'Resources');
   const appRuntimeDir = path.join(resourcesDir, 'app');
 
-  fs.mkdirSync(macosDir, { recursive: true });
-  fs.mkdirSync(resourcesDir, { recursive: true });
-  fs.mkdirSync(appRuntimeDir, { recursive: true });
+  // 2. Debloat & strip Firefox browser components, signatures, and telemetry tools
+  const stripPaths = [
+    path.join(contentsDir, '_CodeSignature'),
+    path.join(contentsDir, 'CodeResources'),
+    path.join(contentsDir, 'embedded.provisionprofile'),
+    path.join(contentsDir, 'Library'),
+    path.join(macosDir, 'updater.app'),
+    path.join(macosDir, 'crashreporter.app'),
+    path.join(macosDir, 'crashhelper'),
+    path.join(macosDir, 'pingsender'),
+    path.join(macosDir, 'nmhproxy'),
+    path.join(resourcesDir, 'Assets.car'),
+    path.join(resourcesDir, 'updater.ini'),
+    path.join(resourcesDir, 'firefox.sig'),
+    path.join(resourcesDir, 'XUL.sig')
+  ];
+  for (const p of stripPaths) {
+    fs.rmSync(p, { recursive: true, force: true });
+  }
 
+  // Remove localized *.lproj folders in Resources that override CFBundleName to "Firefox"
+  for (const entry of fs.readdirSync(resourcesDir)) {
+    if (entry.endsWith('.lproj')) {
+      fs.rmSync(path.join(resourcesDir, entry), { recursive: true, force: true });
+    }
+  }
+  for (const lang of ['en.lproj', 'id.lproj']) {
+    const lprojDir = path.join(resourcesDir, lang);
+    fs.mkdirSync(lprojDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lprojDir, 'InfoPlist.strings'),
+      'CFBundleName = "FishTools Studio";\nCFBundleDisplayName = "FishTools Studio";\n',
+      'utf8'
+    );
+  }
+
+  // 3. Rename Gecko main binary to fishtools-gecko
+  const origFirefoxBin = path.join(macosDir, 'firefox');
+  const geckoBinPath = path.join(macosDir, 'fishtools-gecko');
+  if (fs.existsSync(origFirefoxBin)) {
+    fs.renameSync(origFirefoxBin, geckoBinPath);
+    fs.chmodSync(geckoBinPath, 0o755);
+  }
+
+  // 4. Replace icons across main bundle and helper bundles
   const icnsSrc = path.join(ROOT_DIR, 'icons/icon.icns');
   if (fs.existsSync(icnsSrc)) {
     fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'icon.icns'));
+    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'firefox.icns'));
+    fs.copyFileSync(icnsSrc, path.join(resourcesDir, 'document.icns'));
   }
 
+  for (const helperName of ['plugin-container.app', 'gpu-helper.app', 'media-plugin-helper.app']) {
+    const helperPath = path.join(macosDir, helperName);
+    if (!fs.existsSync(helperPath)) continue;
+    fs.rmSync(path.join(helperPath, 'Contents/_CodeSignature'), { recursive: true, force: true });
+    const helperPlist = path.join(helperPath, 'Contents/Info.plist');
+    if (fs.existsSync(helperPlist)) {
+      try {
+        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleName 'FishTools Studio Helper'" "${helperPlist}" 2>/dev/null || true`);
+        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'FishTools Studio Helper'" "${helperPlist}" 2>/dev/null || true`);
+      } catch (_) {}
+    }
+    const helperRes = path.join(helperPath, 'Contents/Resources');
+    if (fs.existsSync(helperRes) && fs.existsSync(icnsSrc)) {
+      for (const f of fs.readdirSync(helperRes)) {
+        if (f.endsWith('.icns')) {
+          fs.copyFileSync(icnsSrc, path.join(helperRes, f));
+        }
+      }
+    }
+  }
+
+  // 5. Stage FishTools Studio shell into Resources/app/shell
+  fs.mkdirSync(appRuntimeDir, { recursive: true });
   fs.cpSync(path.join(ROOT_DIR, 'shell'), path.join(appRuntimeDir, 'shell'), { recursive: true });
 
+  // 6. Write rebranded application.ini, enterprise policies, and MPL 2.0 compliance notice
+  const appIniPath = path.join(resourcesDir, 'application.ini');
+  let buildId = '20261016000000';
+  let geckoVer = '158.0';
+  if (fs.existsSync(appIniPath)) {
+    const rawIni = fs.readFileSync(appIniPath, 'utf8');
+    const mBuild = rawIni.match(/BuildID=([0-9]+)/);
+    const mVer = rawIni.match(/Version=([0-9.]+)/);
+    if (mBuild) buildId = mBuild[1];
+    if (mVer) geckoVer = mVer[1];
+  }
+  const rebrandedIni = `[App]
+Vendor=OpenFishTools
+Name=FishTools Studio
+RemotingName=fishtools-studio
+Version=${geckoVer}
+BuildID=${buildId}
+ID={ec8030f7-c20a-464f-9b0e-13a3a9e97384}
+
+[Gecko]
+MinVersion=${geckoVer}
+MaxVersion=${geckoVer}
+
+[XRE]
+EnableProfileMigrator=0
+
+[Crash Reporter]
+Enabled=0
+`;
+  fs.writeFileSync(appIniPath, rebrandedIni, 'utf8');
+
+  const distDir = path.join(resourcesDir, 'distribution');
+  fs.mkdirSync(distDir, { recursive: true });
+  const policiesJson = {
+    policies: {
+      AppAutoUpdate: false,
+      BackgroundAppUpdate: false,
+      DisableAppUpdate: true,
+      DisableTelemetry: true,
+      DisableFirefoxStudies: true,
+      DisablePocket: true,
+      DisableFirefoxAccounts: true,
+      DisableFirefoxScreenshots: true,
+      DisableSetDesktopBackground: true,
+      DontCheckDefaultBrowser: true,
+      NoDefaultBookmarks: true,
+      OverrideFirstRunPage: '',
+      OverridePostUpdatePage: '',
+      PasswordManagerEnabled: false,
+      PromptForDownloadLocation: false,
+      UserMessaging: {
+        WhatsNew: false,
+        ExtensionRecommendations: false,
+        FeatureRecommendations: false,
+        UrlbarInterventions: false,
+        SkipOnboarding: true,
+        MoreFromMozilla: false
+      }
+    }
+  };
+  fs.writeFileSync(path.join(distDir, 'policies.json'), JSON.stringify(policiesJson, null, 2), 'utf8');
+
+  const mplNotice = `FishTools Studio — Third-Party Runtime Notice
+=============================================
+
+This application embeds a modified, standalone build of the Mozilla Gecko / XULRunner
+rendering engine licensed under the Mozilla Public License Version 2.0 (MPL 2.0).
+
+- Source Code License: Mozilla Public License v2.0 (https://www.mozilla.org/MPL/2.0/)
+- Upstream Source Repository: https://hg.mozilla.org/releases/mozilla-release
+
+Trademark Disclaimer:
+FishTools Studio is an independent product developed by OpenFishTools (Cutefish) and is
+not affiliated with, endorsed by, or sponsored by the Mozilla Foundation or Mozilla Corporation.
+All Mozilla and Firefox trademarks, wordmarks, and logos have been removed in accordance with
+the Mozilla Trademark Policy (https://www.mozilla.org/en-US/foundation/trademarks/policy/).
+`;
+  fs.writeFileSync(path.join(resourcesDir, 'MOZILLA_MPL_NOTICE.txt'), mplNotice, 'utf8');
+
+  // 7. Patch browser/omni.ja branding in-place
+  patchOmniJaBranding(path.join(resourcesDir, 'browser/omni.ja'));
+
+  // 8. Write Contents/Info.plist
   const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>English</string>
   <key>CFBundleExecutable</key>
   <string>fishtools-studio</string>
   <key>CFBundleIconFile</key>
   <string>icon.icns</string>
   <key>CFBundleIdentifier</key>
   <string>com.cutefishaep.ofts</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
   <key>CFBundleName</key>
   <string>FishTools Studio</string>
   <key>CFBundleDisplayName</key>
@@ -55,9 +360,22 @@ function buildMacApp() {
   <key>CFBundleVersion</key>
   <string>${version}</string>
   <key>LSMinimumSystemVersion</key>
-  <string>10.15</string>
+  <string>10.15.0</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+  <key>NSRequiresAquaSystemAppearance</key>
+  <false/>
+  <key>NSPrincipalClass</key>
+  <string>GeckoNSApplication</string>
+  <key>LSEnvironment</key>
+  <dict>
+    <key>MallocNanoZone</key>
+    <string>0</string>
+    <key>SYSTEM_VERSION_COMPAT</key>
+    <string>0</string>
+  </dict>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
@@ -76,10 +394,12 @@ function buildMacApp() {
 </plist>`;
   fs.writeFileSync(path.join(contentsDir, 'Info.plist'), infoPlist, 'utf8');
 
+  // 9. Write gecko-launcher.sh (prepares profile/runtime and launches embedded fishtools-gecko)
   const launcherSh = `#!/bin/bash
 set -e
 
-BUNDLE_SHELL="$(cd "$(dirname "$0")/../Resources/app/shell" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BUNDLE_SHELL="$(cd "$SCRIPT_DIR/../Resources/app/shell" && pwd)"
 APP_DATA_DIR="$HOME/Library/Caches/com.cutefishaep.ofts"
 RUNTIME_DIR="$APP_DATA_DIR/runtime"
 PROFILE_DIR="$APP_DATA_DIR/gecko-profile"
@@ -114,7 +434,7 @@ if [ ! -f "$RUNTIME_DIR/studio/version.json" ] || ! cmp -s "$BUNDLE_SHELL/manife
 fi
 
 INCOMING_LINK="\$1"
-MANAGED_BY_COCOA="\$2"
+MODE_FLAG="\$2"
 IMPORT_ID=""
 if [ -n "\$INCOMING_LINK" ]; then
   IMPORT_ID=\$(printf '%s' "\$INCOMING_LINK" | sed -E 's#^.*(ofts|fishtools)://(import/|project/|p/)?##; s#[/?#].*\$##; s/[^a-zA-Z0-9_-]//g')
@@ -122,7 +442,7 @@ if [ -n "\$INCOMING_LINK" ]; then
   echo "window.__OFT_DEEPLINK__ = \\"\$SAFE_LINK\\";" > "$RUNTIME_DIR/deeplink.js"
   TS_MS=\$(python3 -c 'import time; print(int(time.time()*1000))' 2>/dev/null || echo "\$(date +%s)000")
   echo "{\\"url\\":\\"\$SAFE_LINK\\",\\"id\\":\\"\$IMPORT_ID\\",\\"ts\\":\$TS_MS}" > "$RUNTIME_DIR/deeplink-live.json"
-elif [ -z "\$MANAGED_BY_COCOA" ]; then
+elif [ -z "\$MODE_FLAG" ]; then
   echo "window.__OFT_DEEPLINK__ = null;" > "$RUNTIME_DIR/deeplink.js"
 fi
 
@@ -158,12 +478,14 @@ if [ -n "\$IMPORT_ID" ]; then
 else
   LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html"
 fi
+printf '%s' "\$LOADER_URL" > "$APP_DATA_DIR/loader.url"
 
 cat > "$PROFILE_DIR/chrome/userChrome.css" << 'EOF'
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
 #navigator-toolbox,
 #TabsToolbar,
+#titlebar,
 #nav-bar,
 #PersonalToolbar,
 #sidebar-box,
@@ -314,6 +636,10 @@ user_pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 EOF
 
+if [ "\$MODE_FLAG" = "--prepare-only" ]; then
+  exit 0
+fi
+
 ulimit -n 65536 2>/dev/null || true
 
 export MOZ_WEBRENDER=1
@@ -324,37 +650,202 @@ export MOZ_DISABLE_GPU_SANDBOX=1
 export MOZ_DISABLE_RDD_SANDBOX=1
 export MOZ_DISABLE_SOCKET_PROCESS_SANDBOX=1
 export JSGC_DISABLE_POISONING=1
+export DYLD_INSERT_LIBRARIES="\$SCRIPT_DIR/libfishtools_bridge.dylib"
 
-FIREFOX_BIN=""
-for candidate in \\
-  "/Applications/Firefox.app/Contents/MacOS/firefox" \\
-  "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox" \\
-  "$HOME/Applications/Firefox.app/Contents/MacOS/firefox" \\
-  "/Applications/Waterfox.app/Contents/MacOS/waterfox" \\
-  "/Applications/Zen Browser.app/Contents/MacOS/zen"; do
-  if [ -x "$candidate" ]; then
-    FIREFOX_BIN="$candidate"
-    break
-  fi
-done
-
-if [ -z "$FIREFOX_BIN" ]; then
-  osascript -e 'display alert "Firefox Runtime Required" message "Please install Firefox.app in /Applications to run FishTools Studio."'
-  exit 1
-fi
-
-"$FIREFOX_BIN" --no-remote -profile "$PROFILE_DIR" "\$LOADER_URL" &
+GECKO_BIN="\$SCRIPT_DIR/fishtools-gecko"
+"\$GECKO_BIN" --no-remote -profile "$PROFILE_DIR" "\$LOADER_URL" &
 FF_PID=\$!
 echo "\$FF_PID" > "$APP_DATA_DIR/ff.pid"
 
-if [ "\$MANAGED_BY_COCOA" != "--managed-by-cocoa" ]; then
-  "$(dirname "$0")/window-watchdog" "\$FF_PID"
+if [ "\$MODE_FLAG" != "--managed-by-cocoa" ]; then
+  "\$SCRIPT_DIR/window-watchdog" "\$FF_PID"
 fi
 `;
 
   const launcherShPath = path.join(macosDir, 'gecko-launcher.sh');
   fs.writeFileSync(launcherShPath, launcherSh, { mode: 0o755 });
 
+  // 10. Compile Native Cocoa Bridge Dylib (libfishtools_bridge.dylib)
+  // Sanitizes macOS Menu Bar (removes History/Bookmarks/Tools/Help, renames Firefox -> FishTools Studio)
+  // and handles in-process Apple Event deep links (ofts://, fishtools://).
+  const bridgeObjcSource = `
+#import <Cocoa/Cocoa.h>
+#include <stdlib.h>
+#include <string.h>
+
+@interface FishToolsCocoaBridge : NSObject
+@end
+
+@implementation FishToolsCocoaBridge
+
++ (void)load {
+    // Prevent child helper processes (plugin-container, gpu-helper) from inheriting this dylib
+    unsetenv("DYLD_INSERT_LIBRARIES");
+
+    NSString *procName = [[NSProcessInfo processInfo] processName];
+    if (procName && ([procName rangeOfString:@"plugin" options:NSCaseInsensitiveSearch].location != NSNotFound ||
+                     [procName rangeOfString:@"helper" options:NSCaseInsensitiveSearch].location != NSNotFound)) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        FishToolsCocoaBridge *bridge = [FishToolsCocoaBridge sharedInstance];
+        [bridge installHooks];
+    });
+}
+
++ (instancetype)sharedInstance {
+    static FishToolsCocoaBridge *inst = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        inst = [[FishToolsCocoaBridge alloc] init];
+    });
+    return inst;
+}
+
+- (void)installHooks {
+    [[NSAppleEventManager sharedAppleEventManager]
+        setEventHandler:self
+        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+        forEventClass:kInternetEventClass
+        andEventID:kAEGetURL];
+
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    [nc addObserver:self selector:@selector(onAppUpdate:) name:NSApplicationDidFinishLaunchingNotification object:nil];
+    [nc addObserver:self selector:@selector(onAppUpdate:) name:NSApplicationDidBecomeActiveNotification object:nil];
+    [nc addObserver:self selector:@selector(onAppUpdate:) name:NSWindowDidBecomeKeyNotification object:nil];
+    [nc addObserver:self selector:@selector(onAppUpdate:) name:NSMenuDidAddItemNotification object:nil];
+
+    [NSTimer scheduledTimerWithTimeInterval:0.25
+                                     target:self
+                                   selector:@selector(sanitizeMenuAndWindows)
+                                   userInfo:nil
+                                    repeats:YES];
+}
+
+- (void)onAppUpdate:(NSNotification *)note {
+    [[NSAppleEventManager sharedAppleEventManager]
+        setEventHandler:self
+        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+        forEventClass:kInternetEventClass
+        andEventID:kAEGetURL];
+    [self sanitizeMenuAndWindows];
+}
+
+- (void)writeDeepLinkBridgeFiles:(NSString *)rawUrl {
+    if (!rawUrl || rawUrl.length == 0) return;
+    NSString *rtDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts/runtime"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
+
+    NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
+                         stringByReplacingOccurrencesOfString:@"\\"" withString:@"\\\\\\""];
+    long long ts = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+
+    NSString *jsonContent = [NSString stringWithFormat:@"{\\"url\\":\\"%@\\",\\"ts\\":%lld}\\n", escaped, ts];
+    NSString *jsonPath = [rtDir stringByAppendingPathComponent:@"deeplink-live.json"];
+    [jsonContent writeToFile:jsonPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\n", escaped];
+    NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
+    [jsContent writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+
+- (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
+    NSString *urlStr = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
+    if (!urlStr || urlStr.length == 0) return;
+    [self writeDeepLinkBridgeFiles:urlStr];
+    [NSApp activateIgnoringOtherApps:YES];
+}
+
+- (NSString *)rebrandString:(NSString *)str {
+    if (!str || str.length == 0) return str;
+    NSString *res = [str stringByReplacingOccurrencesOfString:@"Mozilla Firefox" withString:@"FishTools Studio"];
+    res = [res stringByReplacingOccurrencesOfString:@"Firefox" withString:@"FishTools Studio"];
+    return res;
+}
+
+- (void)sanitizeSubmenu:(NSMenu *)menu {
+    if (!menu) return;
+    menu.title = [self rebrandString:menu.title];
+    for (NSMenuItem *item in [menu itemArray]) {
+        item.title = [self rebrandString:item.title];
+        if (item.submenu) {
+            [self sanitizeSubmenu:item.submenu];
+        }
+    }
+}
+
+- (void)sanitizeMenuAndWindows {
+    // 1. Ensure application icon is FishTools Studio icon.icns
+    static BOOL iconSet = NO;
+    if (!iconSet && NSApp) {
+        NSString *icnsPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"icon.icns"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:icnsPath]) {
+            NSImage *img = [[NSImage alloc] initWithContentsOfFile:icnsPath];
+            if (img) {
+                [NSApp setApplicationIconImage:img];
+                iconSet = YES;
+            }
+        }
+    }
+
+    // 2. Sanitize macOS Top-Left Menu Bar
+    NSMenu *mainMenu = [NSApp mainMenu];
+    if (mainMenu && mainMenu.numberOfItems > 0) {
+        NSMenuItem *appItem = [mainMenu itemAtIndex:0];
+        if (appItem) {
+            appItem.title = @"FishTools Studio";
+            if (appItem.submenu) {
+                appItem.submenu.title = @"FishTools Studio";
+                [self sanitizeSubmenu:appItem.submenu];
+            }
+        }
+
+        NSSet *stripTitles = [NSSet setWithArray:@[
+            @"History", @"Riwayat",
+            @"Bookmarks", @"Markah",
+            @"Tools", @"Alat",
+            @"Profiles", @"Profil",
+            @"View", @"Tampilan",
+            @"Help", @"Bantuan"
+        ]];
+
+        for (NSInteger i = mainMenu.numberOfItems - 1; i >= 1; i--) {
+            NSMenuItem *topItem = [mainMenu itemAtIndex:i];
+            NSString *t = topItem.title ?: @"";
+            NSString *st = topItem.submenu ? (topItem.submenu.title ?: @"") : @"";
+            if ([stripTitles containsObject:t] || [stripTitles containsObject:st]) {
+                [mainMenu removeItemAtIndex:i];
+            } else if (topItem.submenu) {
+                [self sanitizeSubmenu:topItem.submenu];
+            }
+        }
+    }
+
+    // 3. Sanitize Window Titles
+    for (NSWindow *win in [NSApp windows]) {
+        NSString *wTitle = win.title;
+        if (wTitle && ([wTitle rangeOfString:@"Firefox"].location != NSNotFound)) {
+            NSString *clean = [wTitle stringByReplacingOccurrencesOfString:@" — Mozilla Firefox" withString:@""];
+            clean = [clean stringByReplacingOccurrencesOfString:@" - Mozilla Firefox" withString:@""];
+            clean = [clean stringByReplacingOccurrencesOfString:@" — Firefox" withString:@""];
+            clean = [clean stringByReplacingOccurrencesOfString:@" - Firefox" withString:@""];
+            clean = [self rebrandString:clean];
+            win.title = clean.length > 0 ? clean : @"FishTools Studio";
+        }
+    }
+}
+
+@end
+`;
+  const bridgeMPath = path.join(OUT_DIR, 'bridge.m');
+  const bridgeDylibPath = path.join(macosDir, 'libfishtools_bridge.dylib');
+  fs.writeFileSync(bridgeMPath, bridgeObjcSource, 'utf8');
+  execSync(`clang -dynamiclib -O2 -fobjc-arc -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 -framework Cocoa -framework CoreFoundation "${bridgeMPath}" -o "${bridgeDylibPath}"`);
+  fs.unlinkSync(bridgeMPath);
+  fs.chmodSync(bridgeDylibPath, 0o755);
+
+  // 11. Compile Window Watchdog
   const watchdogSource = `
 #include <ApplicationServices/ApplicationServices.h>
 #include <unistd.h>
@@ -423,100 +914,20 @@ int main(int argc, char *argv[]) {
   fs.unlinkSync(watchdogCPath);
   fs.chmodSync(watchdogBinPath, 0o755);
 
+  // 12. Compile Main Executable (Contents/MacOS/fishtools-studio)
+  // Prepares the profile via gecko-launcher.sh --prepare-only, spawns window-watchdog,
+  // and execv()'s Contents/MacOS/fishtools-gecko in-place so the PID and bundle stay unified.
   const objcSource = `
-#import <Cocoa/Cocoa.h>
-#import <ApplicationServices/ApplicationServices.h>
+#import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 #include <mach-o/dyld.h>
 #include <libgen.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
 
-static int count_normal_windows_for_pid(pid_t target_pid) {
-    int count = 0;
-    CFArrayRef window_list = CGWindowListCopyWindowInfo(
-        kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements,
-        kCGNullWindowID
-    );
-    if (!window_list) return 0;
-    CFIndex n = CFArrayGetCount(window_list);
-    for (CFIndex i = 0; i < n; i++) {
-        CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(window_list, i);
-        if (!dict) continue;
-        CFNumberRef pid_ref = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
-        int pid = 0;
-        if (pid_ref && CFNumberGetValue(pid_ref, kCFNumberIntType, &pid) && pid == target_pid) {
-            CFNumberRef layer_ref = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
-            int layer = 0;
-            if (layer_ref) CFNumberGetValue(layer_ref, kCFNumberIntType, &layer);
-            CFBooleanRef onscreen_ref = (CFBooleanRef)CFDictionaryGetValue(dict, kCGWindowIsOnscreen);
-            bool is_onscreen = onscreen_ref ? CFBooleanGetValue(onscreen_ref) : false;
-            CFDictionaryRef bounds_ref = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
-            CGRect bounds = CGRectZero;
-            if (bounds_ref) CGRectMakeWithDictionaryRepresentation(bounds_ref, &bounds);
-            if (layer == 0 && bounds.size.width > 200 && bounds.size.height > 200 && is_onscreen) {
-                count++;
-            }
-        }
-    }
-    CFRelease(window_list);
-    return count;
-}
-
-@interface AppDelegate : NSObject <NSApplicationDelegate>
-@property (nonatomic, copy) NSString *pendingURL;
-@property (nonatomic, assign) pid_t trackedPid;
-@property (nonatomic, assign) BOOL seenWindow;
-@property (nonatomic, assign) int zeroStreak;
-@property (nonatomic, assign) BOOL launchTriggered;
-@end
-
-@implementation AppDelegate
-
-- (instancetype)init {
-    self = [super init];
-    if (self) {
-        [[NSAppleEventManager sharedAppleEventManager]
-            setEventHandler:self
-            andSelector:@selector(handleGetURLEvent:withReplyEvent:)
-            forEventClass:kInternetEventClass
-            andEventID:kAEGetURL];
-    }
-    return self;
-}
-
-- (NSString *)appDataDir {
-    return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts"];
-}
-
-- (NSString *)runtimeDir {
-    return [[self appDataDir] stringByAppendingPathComponent:@"runtime"];
-}
-
-- (NSString *)pidFilePath {
-    return [[self appDataDir] stringByAppendingPathComponent:@"ff.pid"];
-}
-
-- (pid_t)readRunningFirefoxPid {
-    NSString *pidStr = [NSString stringWithContentsOfFile:[self pidFilePath] encoding:NSUTF8StringEncoding error:nil];
-    if (!pidStr) return 0;
-    pid_t pid = (pid_t)[pidStr intValue];
-    if (pid > 0 && kill(pid, 0) == 0) {
-        return pid;
-    }
-    return 0;
-}
-
-- (void)activateFirefoxPid:(pid_t)pid {
-    if (pid <= 0) return;
-    NSRunningApplication *ffApp = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
-    if (ffApp) {
-        [ffApp activateWithOptions:(NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
-    }
-}
-
-- (void)writeDeepLinkBridgeFiles:(NSString *)rawUrl {
+static void write_deeplink_files(NSString *rawUrl, NSString *rtDir) {
     if (!rawUrl || rawUrl.length == 0) return;
-    NSString *rtDir = [self runtimeDir];
     [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
 
     NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
@@ -532,153 +943,114 @@ static int count_normal_windows_for_pid(pid_t target_pid) {
     [jsContent writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
-- (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
-    NSString *urlStr = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
-    if (!urlStr || urlStr.length == 0) return;
-    self.pendingURL = urlStr;
-    [self writeDeepLinkBridgeFiles:urlStr];
-
-    pid_t runningPid = [self readRunningFirefoxPid];
-    if (runningPid > 0) {
-        [self activateFirefoxPid:runningPid];
-    }
-}
-
-- (void)applicationWillFinishLaunching:(NSNotification *)notification {
-    [[NSAppleEventManager sharedAppleEventManager]
-        setEventHandler:self
-        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
-        forEventClass:kInternetEventClass
-        andEventID:kAEGetURL];
-}
-
-- (void)applicationDidFinishLaunching:(NSNotification *)notification {
-    [self performSelector:@selector(startOrForward) withObject:nil afterDelay:0.12];
-}
-
-- (BOOL)applicationShouldHandleReopen:(NSApplication *)theApplication hasVisibleWindows:(BOOL)flag {
-    pid_t runningPid = [self readRunningFirefoxPid];
-    if (runningPid > 0) {
-        [self activateFirefoxPid:runningPid];
-    }
-    return NO;
-}
-
-- (void)startOrForward {
-    if (self.launchTriggered) return;
-    self.launchTriggered = YES;
-
-    if (self.pendingURL && self.pendingURL.length > 0) {
-        [self writeDeepLinkBridgeFiles:self.pendingURL];
-    }
-
-    pid_t existingPid = [self readRunningFirefoxPid];
-    if (existingPid > 0) {
-        [self activateFirefoxPid:existingPid];
-        if (self.trackedPid == 0) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [NSApp terminate:nil];
-            });
-        }
-        return;
-    }
-
-    char exe_path[4096];
-    uint32_t size = sizeof(exe_path);
-    if (_NSGetExecutablePath(exe_path, &size) != 0) {
-        [NSApp terminate:nil];
-        return;
-    }
-    char *dir = dirname(exe_path);
-    NSString *scriptPath = [NSString stringWithFormat:@"%s/gecko-launcher.sh", dir];
-    NSString *initialUrl = self.pendingURL ? [self.pendingURL copy] : @"";
-
-    if (!initialUrl || initialUrl.length == 0) {
-        NSString *rtDir = [self runtimeDir];
-        [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
-        NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
-        [@"window.__OFT_DEEPLINK__ = null;\\n" writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    }
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSTask *task = [[NSTask alloc] init];
-        [task setLaunchPath:@"/bin/bash"];
-        NSString *urlArg = (self.pendingURL && self.pendingURL.length > 0) ? self.pendingURL : initialUrl;
-        [task setArguments:@[scriptPath, urlArg ?: @"", @"--managed-by-cocoa"]];
-        @try {
-            [task launch];
-            [task waitUntilExit];
-        } @catch (NSException *e) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [NSApp terminate:nil];
-            });
-            return;
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (self.pendingURL && self.pendingURL.length > 0) {
-                [self writeDeepLinkBridgeFiles:self.pendingURL];
-            }
-            self.trackedPid = [self readRunningFirefoxPid];
-            if (self.trackedPid <= 0) {
-                [NSApp terminate:nil];
-                return;
-            }
-            [self activateFirefoxPid:self.trackedPid];
-            [NSTimer scheduledTimerWithTimeInterval:0.15
-                                             target:self
-                                           selector:@selector(tickWatchdog:)
-                                           userInfo:nil
-                                            repeats:YES];
-        });
-    });
-}
-
-- (void)tickWatchdog:(NSTimer *)timer {
-    if (self.trackedPid <= 0 || kill(self.trackedPid, 0) != 0) {
-        [[NSFileManager defaultManager] removeItemAtPath:[self pidFilePath] error:nil];
-        [timer invalidate];
-        [NSApp terminate:nil];
-        return;
-    }
-    int winCount = count_normal_windows_for_pid(self.trackedPid);
-    if (winCount > 0) {
-        self.seenWindow = YES;
-        self.zeroStreak = 0;
-    } else if (self.seenWindow) {
-        self.zeroStreak++;
-        if (self.zeroStreak >= 3) {
-            kill(self.trackedPid, SIGTERM);
-            [[NSFileManager defaultManager] removeItemAtPath:[self pidFilePath] error:nil];
-            [timer invalidate];
-            [NSApp terminate:nil];
-        }
-    }
-}
-
-@end
-
 int main(int argc, char *argv[]) {
     @autoreleasepool {
-        NSApplication *app = [NSApplication sharedApplication];
-        [app setActivationPolicy:NSApplicationActivationPolicyAccessory];
-        AppDelegate *delegate = [[AppDelegate alloc] init];
-        if (argc > 1 && argv[1][0] != '-') {
-            delegate.pendingURL = [NSString stringWithUTF8String:argv[1]];
+        NSString *appDataDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts"];
+        NSString *rtDir = [appDataDir stringByAppendingPathComponent:@"runtime"];
+        NSString *profileDir = [appDataDir stringByAppendingPathComponent:@"gecko-profile"];
+        NSString *pidFile = [appDataDir stringByAppendingPathComponent:@"ff.pid"];
+
+        NSString *incomingUrl = @"";
+        for (int i = 1; i < argc; i++) {
+            if (argv[i] && argv[i][0] != '-') {
+                incomingUrl = [NSString stringWithUTF8String:argv[i]];
+                break;
+            }
         }
-        [app setDelegate:delegate];
-        [app run];
+
+        if (incomingUrl.length > 0) {
+            write_deeplink_files(incomingUrl, rtDir);
+        }
+
+        // Check if an instance is already running
+        NSString *pidStr = [NSString stringWithContentsOfFile:pidFile encoding:NSUTF8StringEncoding error:nil];
+        if (pidStr) {
+            pid_t existingPid = (pid_t)[pidStr intValue];
+            if (existingPid > 0 && existingPid != getpid() && kill(existingPid, 0) == 0) {
+                NSRunningApplication *running = [NSRunningApplication runningApplicationWithProcessIdentifier:existingPid];
+                if (running) {
+                    [running activateWithOptions:(NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
+                    return 0;
+                }
+            }
+        }
+
+        char exe_path[4096];
+        uint32_t size = sizeof(exe_path);
+        if (_NSGetExecutablePath(exe_path, &size) != 0) {
+            return 1;
+        }
+        NSString *macosDir = [[NSString stringWithUTF8String:exe_path] stringByDeletingLastPathComponent];
+        NSString *scriptPath = [macosDir stringByAppendingPathComponent:@"gecko-launcher.sh"];
+        NSString *geckoBin = [macosDir stringByAppendingPathComponent:@"fishtools-gecko"];
+        NSString *bridgeDylib = [macosDir stringByAppendingPathComponent:@"libfishtools_bridge.dylib"];
+        NSString *watchdogBin = [macosDir stringByAppendingPathComponent:@"window-watchdog"];
+
+        // Run gecko-launcher.sh --prepare-only synchronously
+        NSTask *prepTask = [[NSTask alloc] init];
+        [prepTask setLaunchPath:@"/bin/bash"];
+        [prepTask setArguments:@[scriptPath, incomingUrl, @"--prepare-only"]];
+        @try {
+            [prepTask launch];
+            [prepTask waitUntilExit];
+        } @catch (NSException *e) {}
+
+        NSString *loaderUrlFile = [appDataDir stringByAppendingPathComponent:@"loader.url"];
+        NSString *loaderUrl = [NSString stringWithContentsOfFile:loaderUrlFile encoding:NSUTF8StringEncoding error:nil];
+        if (!loaderUrl || loaderUrl.length == 0) {
+            loaderUrl = [NSString stringWithFormat:@"file://%@/loader.html", [rtDir stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
+        }
+
+        // Record our PID (preserved across execv)
+        pid_t selfPid = getpid();
+        [[NSString stringWithFormat:@"%d\\n", selfPid] writeToFile:pidFile atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+        // Spawn window-watchdog in background watching our PID
+        pid_t child = fork();
+        if (child == 0) {
+            setsid();
+            NSString *pidArg = [NSString stringWithFormat:@"%d", selfPid];
+            execl([watchdogBin UTF8String], "window-watchdog", [pidArg UTF8String], (char *)NULL);
+            _exit(0);
+        }
+
+        // Configure Gecko & WebRender environment variables
+        setenv("MOZ_WEBRENDER", "1", 1);
+        setenv("MOZ_ACCELERATED", "1", 1);
+        setenv("MOZ_DISABLE_CONTENT_SANDBOX", "1", 1);
+        setenv("MOZ_DISABLE_GMP_SANDBOX", "1", 1);
+        setenv("MOZ_DISABLE_GPU_SANDBOX", "1", 1);
+        setenv("MOZ_DISABLE_RDD_SANDBOX", "1", 1);
+        setenv("MOZ_DISABLE_SOCKET_PROCESS_SANDBOX", "1", 1);
+        setenv("JSGC_DISABLE_POISONING", "1", 1);
+        setenv("DYLD_INSERT_LIBRARIES", [bridgeDylib UTF8String], 1);
+
+        const char *geckoCPath = [geckoBin UTF8String];
+        const char *profCPath = [profileDir UTF8String];
+        const char *urlCStr = [loaderUrl UTF8String];
+
+        char *const geckoArgs[] = {
+            (char *)geckoCPath,
+            (char *)"--no-remote",
+            (char *)"-profile",
+            (char *)profCPath,
+            (char *)urlCStr,
+            NULL
+        };
+
+        execv(geckoCPath, geckoArgs);
+        return 1;
     }
-    return 0;
 }
 `;
   const objcFilePath = path.join(OUT_DIR, 'main.m');
   const binPath = path.join(macosDir, 'fishtools-studio');
   fs.writeFileSync(objcFilePath, objcSource, 'utf8');
-  execSync(`clang -O2 -fobjc-arc -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 -framework Cocoa -framework ApplicationServices -framework CoreFoundation "${objcFilePath}" -o "${binPath}"`);
+  execSync(`clang -O2 -fobjc-arc -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 -framework Cocoa -framework CoreFoundation "${objcFilePath}" -o "${binPath}"`);
   fs.unlinkSync(objcFilePath);
   fs.chmodSync(binPath, 0o755);
 
+  // 13. Deep Ad-Hoc Code Signing with JIT, Unsigned Executable Memory & DYLD Entitlements
   const entitlementsPath = path.join(OUT_DIR, 'entitlements.plist');
   const entitlementsXml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -690,17 +1062,40 @@ int main(int argc, char *argv[]) {
   <true/>
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
   <key>com.apple.security.automation.apple-events</key>
   <true/>
 </dict>
 </plist>`;
   fs.writeFileSync(entitlementsPath, entitlementsXml, 'utf8');
   execSync(`xattr -cr "${APP_PATH}" 2>/dev/null || true`);
+
+  // Sign all dylibs and executables in MacOS/
+  for (const item of fs.readdirSync(macosDir)) {
+    const full = path.join(macosDir, item);
+    if (item.endsWith('.dylib')) {
+      execSync(`/usr/bin/codesign --force --sign - "${full}"`);
+    }
+  }
+  if (fs.existsSync(path.join(macosDir, 'XUL'))) {
+    execSync(`/usr/bin/codesign --force --sign - "${path.join(macosDir, 'XUL')}"`);
+  }
+  for (const helperName of ['plugin-container.app', 'gpu-helper.app', 'media-plugin-helper.app']) {
+    const helperPath = path.join(macosDir, helperName);
+    if (fs.existsSync(helperPath)) {
+      execSync(`/usr/bin/codesign --force --deep --sign - --entitlements "${entitlementsPath}" "${helperPath}"`);
+    }
+  }
   execSync(`/usr/bin/codesign --force --sign - "${launcherShPath}"`);
+  execSync(`/usr/bin/codesign --force --sign - "${bridgeDylibPath}"`);
   execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${watchdogBinPath}"`);
+  execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${geckoBinPath}"`);
+  execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${binPath}"`);
   execSync(`/usr/bin/codesign --force --sign - --entitlements "${entitlementsPath}" "${APP_PATH}"`);
   fs.unlinkSync(entitlementsPath);
 
+  // 14. Package into compressed UDZO .dmg with /Applications shortcut
   const dmgStageDir = path.join(OUT_DIR, '.dmg-stage');
   fs.rmSync(dmgStageDir, { recursive: true, force: true });
   fs.mkdirSync(dmgStageDir, { recursive: true });
