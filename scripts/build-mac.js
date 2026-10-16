@@ -740,7 +740,6 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
     [nc addObserver:self selector:@selector(onAppUpdate:) name:NSApplicationDidFinishLaunchingNotification object:nil];
     [nc addObserver:self selector:@selector(onAppUpdate:) name:NSApplicationDidBecomeActiveNotification object:nil];
     [nc addObserver:self selector:@selector(onAppUpdate:) name:NSWindowDidBecomeKeyNotification object:nil];
-    [nc addObserver:self selector:@selector(onAppUpdate:) name:NSMenuDidAddItemNotification object:nil];
 
     // Block all Firefox browser keyboard shortcuts (Cmd+T, Cmd+N, Cmd+O, Cmd+P, Cmd+,, Cmd+U, Cmd+L, Cmd+J, Cmd+B, Cmd+I)
     // and make Cmd+W terminate the app cleanly instead of closing the internal tab
@@ -885,40 +884,47 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
 }
 
 - (void)sanitizeMenuAndWindows {
-    static BOOL iconSet = NO;
-    if (!iconSet && NSApp) {
-        NSString *icnsPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"icon.icns"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:icnsPath]) {
-            NSImage *img = [[NSImage alloc] initWithContentsOfFile:icnsPath];
-            if (img) {
-                [NSApp setApplicationIconImage:img];
-                iconSet = YES;
+    static BOOL inSanitize = NO;
+    if (inSanitize) return;
+    inSanitize = YES;
+    @try {
+        static BOOL iconSet = NO;
+        if (!iconSet && NSApp) {
+            NSString *icnsPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"icon.icns"];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:icnsPath]) {
+                NSImage *img = [[NSImage alloc] initWithContentsOfFile:icnsPath];
+                if (img) {
+                    [NSApp setApplicationIconImage:img];
+                    iconSet = YES;
+                }
             }
         }
-    }
 
-    NSMenu *mainMenu = [NSApp mainMenu];
-    BOOL needsCleanMenu = (!mainMenu || mainMenu.numberOfItems != 3);
-    if (!needsCleanMenu && mainMenu.numberOfItems == 3) {
-        NSMenuItem *first = [mainMenu itemAtIndex:0];
-        NSMenuItem *second = [mainMenu itemAtIndex:1];
-        NSMenuItem *third = [mainMenu itemAtIndex:2];
-        if (![first.title isEqualToString:@"FishTools Studio"] ||
-            ![second.title isEqualToString:@"Edit"] ||
-            ![third.title isEqualToString:@"Window"] ||
-            (first.submenu && first.submenu.numberOfItems != 7)) {
-            needsCleanMenu = YES;
+        NSMenu *mainMenu = [NSApp mainMenu];
+        BOOL needsCleanMenu = (!mainMenu || mainMenu.numberOfItems != 3);
+        if (!needsCleanMenu && mainMenu.numberOfItems == 3) {
+            NSMenuItem *first = [mainMenu itemAtIndex:0];
+            NSMenuItem *second = [mainMenu itemAtIndex:1];
+            NSMenuItem *third = [mainMenu itemAtIndex:2];
+            if (![first.title isEqualToString:@"FishTools Studio"] ||
+                ![second.title isEqualToString:@"Edit"] ||
+                ![third.title isEqualToString:@"Window"] ||
+                (first.submenu && first.submenu.numberOfItems != 7)) {
+                needsCleanMenu = YES;
+            }
         }
-    }
-    if (needsCleanMenu && NSApp) {
-        [NSApp setMainMenu:[self buildCleanMainMenu]];
-    }
+        if (needsCleanMenu && NSApp) {
+            [NSApp setMainMenu:[self buildCleanMainMenu]];
+        }
 
-    for (NSWindow *win in [NSApp windows]) {
-        NSString *wTitle = win.title;
-        if (!wTitle || wTitle.length == 0 || [wTitle rangeOfString:@"Firefox"].location != NSNotFound || [wTitle rangeOfString:@"Mozilla"].location != NSNotFound) {
-            win.title = @"FishTools Studio";
+        for (NSWindow *win in [NSApp windows]) {
+            NSString *wTitle = win.title;
+            if (!wTitle || wTitle.length == 0 || [wTitle rangeOfString:@"Firefox"].location != NSNotFound || [wTitle rangeOfString:@"Mozilla"].location != NSNotFound) {
+                win.title = @"FishTools Studio";
+            }
         }
+    } @finally {
+        inSanitize = NO;
     }
 }
 
