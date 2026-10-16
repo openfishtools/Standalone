@@ -362,6 +362,9 @@ WaitForSingleObject
 TerminateProcess
 CloseHandle
 ExitProcess
+CreateMutexW
+GetLastError
+GetTickCount
 `;
 
   const user32Def = `LIBRARY USER32.dll
@@ -371,6 +374,9 @@ EnumWindows
 GetWindowThreadProcessId
 IsWindowVisible
 GetWindowRect
+GetWindowTextW
+SetWindowTextW
+SetForegroundWindow
 `;
 
   const advapi32Def = `LIBRARY ADVAPI32.dll
@@ -420,7 +426,11 @@ RegDeleteTreeW
 
   const userJsTemplate = `user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("browser.tabs.inTitlebar", 0);
+user_pref("browser.startup.blankWindow", false);
+user_pref("browser.startup.preXulSkeletonUI", false);
 user_pref("browser.startup.page", 1);
+user_pref("network.protocol-handler.external.ofts", false);
+user_pref("network.protocol-handler.external.fishtools", false);
 user_pref("browser.newtabpage.enabled", false);
 user_pref("browser.newtabpage.activity-stream.feeds.snippets", false);
 user_pref("browser.newtabpage.activity-stream.feeds.topsites", false);
@@ -685,6 +695,12 @@ __declspec(dllimport) BOOL __stdcall EnumWindows(WNDENUMPROC lpEnumFunc, ULONG_P
 __declspec(dllimport) DWORD __stdcall GetWindowThreadProcessId(HWND hWnd, DWORD* lpdwProcessId);
 __declspec(dllimport) BOOL __stdcall IsWindowVisible(HWND hWnd);
 __declspec(dllimport) BOOL __stdcall GetWindowRect(HWND hWnd, RECT* lpRect);
+__declspec(dllimport) int __stdcall GetWindowTextW(HWND hWnd, WCHAR* lpString, int nMaxCount);
+__declspec(dllimport) BOOL __stdcall SetWindowTextW(HWND hWnd, const WCHAR* lpString);
+__declspec(dllimport) BOOL __stdcall SetForegroundWindow(HWND hWnd);
+__declspec(dllimport) HANDLE __stdcall CreateMutexW(SECURITY_ATTRIBUTES* lpMutexAttributes, BOOL bInitialOwner, const WCHAR* lpName);
+__declspec(dllimport) DWORD __stdcall GetLastError(void);
+__declspec(dllimport) DWORD __stdcall GetTickCount(void);
 __declspec(dllimport) LONG __stdcall RegCreateKeyExW(HANDLE hKey, const WCHAR* lpSubKey, DWORD Reserved, WCHAR* lpClass, DWORD dwOptions, DWORD samDesired, void* lpSecurityAttributes, HANDLE* phkResult, DWORD* lpdwDisposition);
 __declspec(dllimport) LONG __stdcall RegSetValueExW(HANDLE hKey, const WCHAR* lpValueName, DWORD Reserved, DWORD dwType, const void* lpData, DWORD cbData);
 __declspec(dllimport) LONG __stdcall RegCloseKey(HANDLE hKey);
@@ -916,6 +932,91 @@ static void extract_first_cli_arg(WCHAR* outArg) {
     outArg[j] = 0;
 }
 
+static void extract_clean_import_id(const WCHAR* raw, WCHAR* outId) {
+    outId[0] = 0;
+    int len = wlen(raw);
+    int end = len;
+    while (end > 0 && (raw[end - 1] == L'/' || raw[end - 1] == L'\\\\' || raw[end - 1] == L' ')) end--;
+    int start = end;
+    while (start > 0 && raw[start - 1] != L'/' && raw[start - 1] != L'\\\\' && raw[start - 1] != L'=') start--;
+    int j = 0;
+    for (int i = start; i < end && j < 250; i++) {
+        WCHAR c = raw[i];
+        if ((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') || c == L'_' || c == L'-') {
+            outId[j++] = c;
+        }
+    }
+    outId[j] = 0;
+}
+
+static void write_ascii_file(const WCHAR* path, const char* data) {
+    HANDLE h = CreateFileW(path, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if (h != INVALID_HANDLE_VALUE) {
+        DWORD written = 0;
+        WriteFile(h, data, (DWORD)strlen(data), &written, 0);
+        CloseHandle(h);
+    }
+}
+
+static void write_deeplink_bridge(const WCHAR* exeDir, const WCHAR* cliArg) {
+    WCHAR jsonPath[2048], jsPath[2048];
+    wcpy(jsonPath, exeDir); wcat(jsonPath, L"\\\\resources\\\\app\\\\shell\\\\deeplink-live.json");
+    wcpy(jsPath, exeDir); wcat(jsPath, L"\\\\resources\\\\app\\\\shell\\\\deeplink.js");
+
+    if (!cliArg[0]) {
+        write_ascii_file(jsPath, "window.__OFT_DEEPLINK__ = null;\\n");
+        return;
+    }
+
+    char safeUrl[1024];
+    int p = 0;
+    for (int i = 0; cliArg[i] && p < 980; i++) {
+        WCHAR c = cliArg[i];
+        if (c == L'\\\\' || c == L'"') safeUrl[p++] = '\\\\';
+        if (c >= 32 && c < 127) safeUrl[p++] = (char)c;
+    }
+    safeUrl[p] = 0;
+
+    DWORD tick = GetTickCount();
+    char tickBuf[32];
+    int tp = 0;
+    if (tick == 0) {
+        tickBuf[tp++] = '1';
+    } else {
+        char rev[32];
+        int rp = 0;
+        while (tick > 0) {
+            rev[rp++] = (char)('0' + (tick % 10));
+            tick /= 10;
+        }
+        while (rp > 0) tickBuf[tp++] = rev[--rp];
+    }
+    tickBuf[tp] = 0;
+
+    char jsonBuf[1536];
+    const char* p1 = "{\\"url\\":\\"";
+    const char* p2 = "\\",\\"ts\\":";
+    const char* p3 = "}\\n";
+    int k = 0;
+    for (int i = 0; p1[i]; i++) jsonBuf[k++] = p1[i];
+    for (int i = 0; safeUrl[i]; i++) jsonBuf[k++] = safeUrl[i];
+    for (int i = 0; p2[i]; i++) jsonBuf[k++] = p2[i];
+    for (int i = 0; tickBuf[i]; i++) jsonBuf[k++] = tickBuf[i];
+    for (int i = 0; p3[i]; i++) jsonBuf[k++] = p3[i];
+    jsonBuf[k] = 0;
+    write_ascii_file(jsonPath, jsonBuf);
+
+    char jsBuf[1536];
+    const char* j1 = "window.__OFT_DEEPLINK__ = \\"";
+    const char* j2 = "\\";\\n";
+    k = 0;
+    for (int i = 0; j1[i]; i++) jsBuf[k++] = j1[i];
+    for (int i = 0; safeUrl[i]; i++) jsBuf[k++] = safeUrl[i];
+    for (int i = 0; j2[i]; i++) jsBuf[k++] = j2[i];
+    jsBuf[k] = 0;
+    write_ascii_file(jsPath, jsBuf);
+}
+
 typedef struct {
     DWORD targetPid;
     int count;
@@ -930,6 +1031,13 @@ static BOOL __stdcall enum_windows_cb(HWND hwnd, ULONG_PTR lParam) {
         if (GetWindowRect(hwnd, &r)) {
             if ((r.right - r.left) > 200 && (r.bottom - r.top) > 200) {
                 ctx->count++;
+                WCHAR title[256];
+                title[0] = 0;
+                if (GetWindowTextW(hwnd, title, 255) > 0) {
+                    if (weq(title, L"Mozilla Firefox")) {
+                        SetWindowTextW(hwnd, L"FishTools Studio");
+                    }
+                }
             }
         }
     }
@@ -952,6 +1060,15 @@ void mainCRTStartup(void) {
 
     // Ensure Control Panel Uninstall & ofts:// protocol point to current installation
     register_app_and_control_panel(exeDir);
+
+    WCHAR cliArg[1024];
+    extract_first_cli_arg(cliArg);
+    write_deeplink_bridge(exeDir, cliArg);
+
+    HANDLE hMutex = CreateMutexW(0, 1, L"Local\\\\FishToolsStudioSingleInstance");
+    if (hMutex && GetLastError() == 183) {
+        ExitProcess(0);
+    }
 
     // Hide internal resources directory from File Explorer
     WCHAR resDir[2048];
@@ -1005,11 +1122,15 @@ void mainCRTStartup(void) {
     WCHAR loaderUrl[4096];
     path_to_file_url(loaderPath, loaderUrl);
 
-    WCHAR cliArg[1024];
-    extract_first_cli_arg(cliArg);
     if (cliArg[0]) {
-        wcat(loaderUrl, L"#");
-        wcat(loaderUrl, cliArg);
+        WCHAR cleanId[256];
+        extract_clean_import_id(cliArg, cleanId);
+        if (cleanId[0]) {
+            wcat(loaderUrl, L"?import=");
+            wcat(loaderUrl, cleanId);
+            wcat(loaderUrl, L"#import=");
+            wcat(loaderUrl, cleanId);
+        }
     }
 
     WCHAR ffBin[2048];

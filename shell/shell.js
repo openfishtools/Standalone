@@ -104,14 +104,49 @@
     return null;
   }
 
+  function checkLiveDeepLinkFile() {
+    return new Promise((resolve) => {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', `./deeplink-live.json?t=${Date.now()}`, true);
+        xhr.timeout = 800;
+        xhr.onload = function () {
+          if ((xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) && xhr.responseText) {
+            try {
+              const payload = JSON.parse(xhr.responseText);
+              if (payload && payload.ts && (payload.url || payload.id)) {
+                const lastTs = localStorage.getItem('oft_last_deeplink_ts');
+                if (String(payload.ts) !== String(lastTs)) {
+                  localStorage.setItem('oft_last_deeplink_ts', String(payload.ts));
+                  const id = extractDeepLinkProjectId(payload.url || payload.id);
+                  if (id) {
+                    resolve(id);
+                    return;
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+          resolve('');
+        };
+        xhr.onerror = () => resolve('');
+        xhr.ontimeout = () => resolve('');
+        xhr.send(null);
+      } catch (_) {
+        resolve('');
+      }
+    });
+  }
+
   async function start() {
-    const incomingImportId = resolveIncomingImportId();
+    let incomingImportId = resolveIncomingImportId();
+    const earlyLiveId = await checkLiveDeepLinkFile();
+    if (!incomingImportId && earlyLiveId) {
+      incomingImportId = earlyLiveId;
+    }
     if (incomingImportId) {
       try { sessionStorage.setItem('oft_pending_import_id', incomingImportId); } catch (_) {}
     }
-    const targetStudioUrl = incomingImportId
-      ? `./studio/index.html?import=${encodeURIComponent(incomingImportId)}#import=${encodeURIComponent(incomingImportId)}`
-      : './studio/index.html';
 
     try {
       if (navigator.storage && typeof navigator.storage.persist === 'function') {
@@ -151,11 +186,25 @@
         setStatus(85, installedVersion ? `Offline mode (v${installedVersion})` : 'Offline ready');
       }
 
+      const lateLiveId = await checkLiveDeepLinkFile();
+      if (!incomingImportId && lateLiveId) {
+        incomingImportId = lateLiveId;
+      }
+      if (incomingImportId) {
+        try { sessionStorage.setItem('oft_pending_import_id', incomingImportId); } catch (_) {}
+      }
+      const targetStudioUrl = incomingImportId
+        ? `./studio/index.html?import=${encodeURIComponent(incomingImportId)}#import=${encodeURIComponent(incomingImportId)}`
+        : './studio/index.html';
+
       setStatus(100, incomingImportId ? 'Opening Preset...' : 'Launching FishTools Studio...');
       setTimeout(() => {
         window.location.replace(targetStudioUrl);
       }, 250);
     } catch (_) {
+      const targetStudioUrl = incomingImportId
+        ? `./studio/index.html?import=${encodeURIComponent(incomingImportId)}#import=${encodeURIComponent(incomingImportId)}`
+        : './studio/index.html';
       setStatus(100, 'Launching FishTools Studio...');
       window.location.replace(targetStudioUrl);
     }

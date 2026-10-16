@@ -85,26 +85,6 @@ RUNTIME_DIR="$APP_DATA_DIR/runtime"
 PROFILE_DIR="$APP_DATA_DIR/gecko-profile"
 mkdir -p "$PROFILE_DIR/chrome"
 
-mkdir -p "$RUNTIME_DIR"
-cp "$BUNDLE_SHELL/loader.html" "$BUNDLE_SHELL/index.html" "$BUNDLE_SHELL/shell.css" "$BUNDLE_SHELL/shell.js" "$BUNDLE_SHELL/deeplink.js" "$RUNTIME_DIR/" 2>/dev/null || true
-if [ ! -f "$RUNTIME_DIR/studio/version.json" ]; then
-  cp -R "$BUNDLE_SHELL/"* "$RUNTIME_DIR/"
-else
-  BUNDLE_VER=\$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$BUNDLE_SHELL/studio/version.json" 2>/dev/null | cut -d'"' -f4)
-  LOCAL_VER=\$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$RUNTIME_DIR/studio/version.json" 2>/dev/null | cut -d'"' -f4)
-  if [ -n "\$BUNDLE_VER" ] && [ "\$BUNDLE_VER" != "\$LOCAL_VER" ] && [ ! -f "$RUNTIME_DIR/.github_updated" ]; then
-    cp -R "$BUNDLE_SHELL/"* "$RUNTIME_DIR/"
-  fi
-fi
-
-INCOMING_LINK="\$1"
-if [ -n "\$INCOMING_LINK" ]; then
-  SAFE_LINK=\$(printf '%s' "\$INCOMING_LINK" | sed 's/"/\\\\"/g')
-  echo "window.__OFT_DEEPLINK__ = \\"\$SAFE_LINK\\";" > "$RUNTIME_DIR/deeplink.js"
-else
-  echo "window.__OFT_DEEPLINK__ = null;" > "$RUNTIME_DIR/deeplink.js"
-fi
-
 apply_studio_patches() {
   local TARGET_STUDIO="\$1"
   if [ -f "\$TARGET_STUDIO/effects/loader.js" ]; then
@@ -121,6 +101,30 @@ apply_studio_patches() {
     sed -i '' "s/this.maxRamFrames = 600;/this.maxRamFrames = 1800;/g" "\$TARGET_STUDIO/js/frame-extractor.js" 2>/dev/null || true
   fi
 }
+
+mkdir -p "$RUNTIME_DIR"
+cp "$BUNDLE_SHELL/loader.html" "$BUNDLE_SHELL/index.html" "$BUNDLE_SHELL/shell.css" "$BUNDLE_SHELL/shell.js" "$RUNTIME_DIR/" 2>/dev/null || true
+if [ ! -f "$RUNTIME_DIR/deeplink.js" ]; then
+  cp "$BUNDLE_SHELL/deeplink.js" "$RUNTIME_DIR/" 2>/dev/null || true
+fi
+if [ ! -f "$RUNTIME_DIR/studio/version.json" ] || ! cmp -s "$BUNDLE_SHELL/manifest.json" "$RUNTIME_DIR/manifest.json" 2>/dev/null; then
+  cp -R "$BUNDLE_SHELL/"* "$RUNTIME_DIR/"
+  apply_studio_patches "$RUNTIME_DIR/studio"
+  rm -f "$RUNTIME_DIR/.github_updated"
+fi
+
+INCOMING_LINK="\$1"
+MANAGED_BY_COCOA="\$2"
+IMPORT_ID=""
+if [ -n "\$INCOMING_LINK" ]; then
+  IMPORT_ID=\$(printf '%s' "\$INCOMING_LINK" | sed -E 's#^.*(ofts|fishtools)://(import/|project/|p/)?##; s#[/?#].*\$##; s/[^a-zA-Z0-9_-]//g')
+  SAFE_LINK=\$(printf '%s' "\$INCOMING_LINK" | sed 's/"/\\\\"/g')
+  echo "window.__OFT_DEEPLINK__ = \\"\$SAFE_LINK\\";" > "$RUNTIME_DIR/deeplink.js"
+  TS_MS=\$(python3 -c 'import time; print(int(time.time()*1000))' 2>/dev/null || echo "\$(date +%s)000")
+  echo "{\\"url\\":\\"\$SAFE_LINK\\",\\"id\\":\\"\$IMPORT_ID\\",\\"ts\\":\$TS_MS}" > "$RUNTIME_DIR/deeplink-live.json"
+elif [ -z "\$MANAGED_BY_COCOA" ]; then
+  echo "window.__OFT_DEEPLINK__ = null;" > "$RUNTIME_DIR/deeplink.js"
+fi
 
 if curl -fsSL --max-time 3 "https://raw.githubusercontent.com/openfishtools/Studio/main/version.json" -o "/tmp/ofts_remote_ver.json" 2>/dev/null; then
   REMOTE_VER=\$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' /tmp/ofts_remote_ver.json | cut -d'"' -f4)
@@ -144,11 +148,13 @@ if [ -f "$PROFILE_DIR/prefs.js" ]; then
   sed -i '' '/browser\\.tabs\\.inTitlebar/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.homepage/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
   sed -i '' '/browser\\.startup\\.page/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.startup\\.blankWindow/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
+  sed -i '' '/browser\\.startup\\.preXulSkeletonUI/d' "$PROFILE_DIR/prefs.js" 2>/dev/null || true
 fi
 
 ENCODED_RUNTIME_DIR="\${RUNTIME_DIR// /%20}"
-if [ -n "\$INCOMING_LINK" ]; then
-  LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html#\$INCOMING_LINK"
+if [ -n "\$IMPORT_ID" ]; then
+  LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html?import=\$IMPORT_ID#import=\$IMPORT_ID"
 else
   LOADER_URL="file://\$ENCODED_RUNTIME_DIR/loader.html"
 fi
@@ -184,8 +190,12 @@ EOF
 cat > "$PROFILE_DIR/user.js" << EOF
 user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
 user_pref("browser.tabs.inTitlebar", 0);
+user_pref("browser.startup.blankWindow", false);
+user_pref("browser.startup.preXulSkeletonUI", false);
 user_pref("browser.startup.page", 1);
 user_pref("browser.startup.homepage", "\$LOADER_URL");
+user_pref("network.protocol-handler.external.ofts", false);
+user_pref("network.protocol-handler.external.fishtools", false);
 user_pref("browser.newtabpage.enabled", false);
 user_pref("browser.newtabpage.activity-stream.feeds.snippets", false);
 user_pref("browser.newtabpage.activity-stream.feeds.topsites", false);
@@ -335,8 +345,11 @@ fi
 
 "$FIREFOX_BIN" --no-remote -profile "$PROFILE_DIR" "\$LOADER_URL" &
 FF_PID=\$!
+echo "\$FF_PID" > "$APP_DATA_DIR/ff.pid"
 
-"$(dirname "$0")/window-watchdog" "\$FF_PID"
+if [ "\$MANAGED_BY_COCOA" != "--managed-by-cocoa" ]; then
+  "$(dirname "$0")/window-watchdog" "\$FF_PID"
+fi
 `;
 
   const launcherShPath = path.join(macosDir, 'gecko-launcher.sh');
@@ -410,33 +423,260 @@ int main(int argc, char *argv[]) {
   fs.unlinkSync(watchdogCPath);
   fs.chmodSync(watchdogBinPath, 0o755);
 
-  const cSource = `
-#include <unistd.h>
-#include <libgen.h>
-#include <string.h>
-#include <stdio.h>
+  const objcSource = `
+#import <Cocoa/Cocoa.h>
+#import <ApplicationServices/ApplicationServices.h>
 #include <mach-o/dyld.h>
+#include <libgen.h>
+#include <unistd.h>
+#include <signal.h>
 
-int main(int argc, char *argv[]) {
+static int count_normal_windows_for_pid(pid_t target_pid) {
+    int count = 0;
+    CFArrayRef window_list = CGWindowListCopyWindowInfo(
+        kCGWindowListOptionAll | kCGWindowListExcludeDesktopElements,
+        kCGNullWindowID
+    );
+    if (!window_list) return 0;
+    CFIndex n = CFArrayGetCount(window_list);
+    for (CFIndex i = 0; i < n; i++) {
+        CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(window_list, i);
+        if (!dict) continue;
+        CFNumberRef pid_ref = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
+        int pid = 0;
+        if (pid_ref && CFNumberGetValue(pid_ref, kCFNumberIntType, &pid) && pid == target_pid) {
+            CFNumberRef layer_ref = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
+            int layer = 0;
+            if (layer_ref) CFNumberGetValue(layer_ref, kCFNumberIntType, &layer);
+            CFBooleanRef onscreen_ref = (CFBooleanRef)CFDictionaryGetValue(dict, kCGWindowIsOnscreen);
+            bool is_onscreen = onscreen_ref ? CFBooleanGetValue(onscreen_ref) : false;
+            CFDictionaryRef bounds_ref = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
+            CGRect bounds = CGRectZero;
+            if (bounds_ref) CGRectMakeWithDictionaryRepresentation(bounds_ref, &bounds);
+            if (layer == 0 && bounds.size.width > 200 && bounds.size.height > 200 && is_onscreen) {
+                count++;
+            }
+        }
+    }
+    CFRelease(window_list);
+    return count;
+}
+
+@interface AppDelegate : NSObject <NSApplicationDelegate>
+@property (nonatomic, copy) NSString *pendingURL;
+@property (nonatomic, assign) pid_t trackedPid;
+@property (nonatomic, assign) BOOL seenWindow;
+@property (nonatomic, assign) int zeroStreak;
+@property (nonatomic, assign) BOOL launchTriggered;
+@end
+
+@implementation AppDelegate
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        [[NSAppleEventManager sharedAppleEventManager]
+            setEventHandler:self
+            andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+            forEventClass:kInternetEventClass
+            andEventID:kAEGetURL];
+    }
+    return self;
+}
+
+- (NSString *)appDataDir {
+    return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts"];
+}
+
+- (NSString *)runtimeDir {
+    return [[self appDataDir] stringByAppendingPathComponent:@"runtime"];
+}
+
+- (NSString *)pidFilePath {
+    return [[self appDataDir] stringByAppendingPathComponent:@"ff.pid"];
+}
+
+- (pid_t)readRunningFirefoxPid {
+    NSString *pidStr = [NSString stringWithContentsOfFile:[self pidFilePath] encoding:NSUTF8StringEncoding error:nil];
+    if (!pidStr) return 0;
+    pid_t pid = (pid_t)[pidStr intValue];
+    if (pid > 0 && kill(pid, 0) == 0) {
+        return pid;
+    }
+    return 0;
+}
+
+- (void)activateFirefoxPid:(pid_t)pid {
+    if (pid <= 0) return;
+    NSRunningApplication *ffApp = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+    if (ffApp) {
+        [ffApp activateWithOptions:(NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps)];
+    }
+}
+
+- (void)writeDeepLinkBridgeFiles:(NSString *)rawUrl {
+    if (!rawUrl || rawUrl.length == 0) return;
+    NSString *rtDir = [self runtimeDir];
+    [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
+
+    NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
+                         stringByReplacingOccurrencesOfString:@"\\"" withString:@"\\\\\\""];
+    long long ts = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
+
+    NSString *jsonContent = [NSString stringWithFormat:@"{\\"url\\":\\"%@\\",\\"ts\\":%lld}\\n", escaped, ts];
+    NSString *jsonPath = [rtDir stringByAppendingPathComponent:@"deeplink-live.json"];
+    [jsonContent writeToFile:jsonPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\n", escaped];
+    NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
+    [jsContent writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+
+- (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
+    NSString *urlStr = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
+    if (!urlStr || urlStr.length == 0) return;
+    self.pendingURL = urlStr;
+    [self writeDeepLinkBridgeFiles:urlStr];
+
+    pid_t runningPid = [self readRunningFirefoxPid];
+    if (runningPid > 0) {
+        [self activateFirefoxPid:runningPid];
+    }
+}
+
+- (void)applicationWillFinishLaunching:(NSNotification *)notification {
+    [[NSAppleEventManager sharedAppleEventManager]
+        setEventHandler:self
+        andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+        forEventClass:kInternetEventClass
+        andEventID:kAEGetURL];
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)notification {
+    [self performSelector:@selector(startOrForward) withObject:nil afterDelay:0.12];
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)theApplication hasVisibleWindows:(BOOL)flag {
+    pid_t runningPid = [self readRunningFirefoxPid];
+    if (runningPid > 0) {
+        [self activateFirefoxPid:runningPid];
+    }
+    return NO;
+}
+
+- (void)startOrForward {
+    if (self.launchTriggered) return;
+    self.launchTriggered = YES;
+
+    if (self.pendingURL && self.pendingURL.length > 0) {
+        [self writeDeepLinkBridgeFiles:self.pendingURL];
+    }
+
+    pid_t existingPid = [self readRunningFirefoxPid];
+    if (existingPid > 0) {
+        [self activateFirefoxPid:existingPid];
+        if (self.trackedPid == 0) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [NSApp terminate:nil];
+            });
+        }
+        return;
+    }
+
     char exe_path[4096];
     uint32_t size = sizeof(exe_path);
     if (_NSGetExecutablePath(exe_path, &size) != 0) {
-        return 1;
+        [NSApp terminate:nil];
+        return;
     }
     char *dir = dirname(exe_path);
-    char script_path[4096];
-    snprintf(script_path, sizeof(script_path), "%s/gecko-launcher.sh", dir);
-    char *arg1 = (argc > 1 && argv[1][0] != '-') ? argv[1] : NULL;
-    char *new_argv[] = { "/bin/bash", script_path, arg1, NULL };
-    execv("/bin/bash", new_argv);
+    NSString *scriptPath = [NSString stringWithFormat:@"%s/gecko-launcher.sh", dir];
+    NSString *initialUrl = self.pendingURL ? [self.pendingURL copy] : @"";
+
+    if (!initialUrl || initialUrl.length == 0) {
+        NSString *rtDir = [self runtimeDir];
+        [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
+        NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
+        [@"window.__OFT_DEEPLINK__ = null;\\n" writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    }
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSTask *task = [[NSTask alloc] init];
+        [task setLaunchPath:@"/bin/bash"];
+        NSString *urlArg = (self.pendingURL && self.pendingURL.length > 0) ? self.pendingURL : initialUrl;
+        [task setArguments:@[scriptPath, urlArg ?: @"", @"--managed-by-cocoa"]];
+        @try {
+            [task launch];
+            [task waitUntilExit];
+        } @catch (NSException *e) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [NSApp terminate:nil];
+            });
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.pendingURL && self.pendingURL.length > 0) {
+                [self writeDeepLinkBridgeFiles:self.pendingURL];
+            }
+            self.trackedPid = [self readRunningFirefoxPid];
+            if (self.trackedPid <= 0) {
+                [NSApp terminate:nil];
+                return;
+            }
+            [self activateFirefoxPid:self.trackedPid];
+            [NSTimer scheduledTimerWithTimeInterval:0.15
+                                             target:self
+                                           selector:@selector(tickWatchdog:)
+                                           userInfo:nil
+                                            repeats:YES];
+        });
+    });
+}
+
+- (void)tickWatchdog:(NSTimer *)timer {
+    if (self.trackedPid <= 0 || kill(self.trackedPid, 0) != 0) {
+        [[NSFileManager defaultManager] removeItemAtPath:[self pidFilePath] error:nil];
+        [timer invalidate];
+        [NSApp terminate:nil];
+        return;
+    }
+    int winCount = count_normal_windows_for_pid(self.trackedPid);
+    if (winCount > 0) {
+        self.seenWindow = YES;
+        self.zeroStreak = 0;
+    } else if (self.seenWindow) {
+        self.zeroStreak++;
+        if (self.zeroStreak >= 3) {
+            kill(self.trackedPid, SIGTERM);
+            [[NSFileManager defaultManager] removeItemAtPath:[self pidFilePath] error:nil];
+            [timer invalidate];
+            [NSApp terminate:nil];
+        }
+    }
+}
+
+@end
+
+int main(int argc, char *argv[]) {
+    @autoreleasepool {
+        NSApplication *app = [NSApplication sharedApplication];
+        [app setActivationPolicy:NSApplicationActivationPolicyAccessory];
+        AppDelegate *delegate = [[AppDelegate alloc] init];
+        if (argc > 1 && argv[1][0] != '-') {
+            delegate.pendingURL = [NSString stringWithUTF8String:argv[1]];
+        }
+        [app setDelegate:delegate];
+        [app run];
+    }
     return 0;
 }
 `;
-  const cFilePath = path.join(OUT_DIR, 'main.c');
+  const objcFilePath = path.join(OUT_DIR, 'main.m');
   const binPath = path.join(macosDir, 'fishtools-studio');
-  fs.writeFileSync(cFilePath, cSource, 'utf8');
-  execSync(`clang -O2 -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 "${cFilePath}" -o "${binPath}"`);
-  fs.unlinkSync(cFilePath);
+  fs.writeFileSync(objcFilePath, objcSource, 'utf8');
+  execSync(`clang -O2 -fobjc-arc -mmacosx-version-min=10.15 -arch x86_64 -arch arm64 -framework Cocoa -framework ApplicationServices -framework CoreFoundation "${objcFilePath}" -o "${binPath}"`);
+  fs.unlinkSync(objcFilePath);
   fs.chmodSync(binPath, 0o755);
 
   const entitlementsPath = path.join(OUT_DIR, 'entitlements.plist');
