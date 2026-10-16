@@ -226,6 +226,7 @@ try {
 
       const homeUrl = Services.prefs.getStringPref("browser.startup.homepage", "");
       if (win.gBrowser && homeUrl) {
+        const baseHome = homeUrl.split("?")[0].split("#")[0];
         const checkTabs = () => {
           try {
             if (!win.gBrowser.tabs || win.gBrowser.tabs.length === 0) {
@@ -234,14 +235,28 @@ try {
             }
             const spec = (win.gBrowser.currentURI && win.gBrowser.currentURI.spec) || "";
             if (
+              spec.startsWith("ofts:") ||
+              spec.startsWith("fishtools:") ||
+              /^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/[a-zA-Z0-9_-]+/i.test(spec)
+            ) {
+              const id = spec
+                .replace(/^.*(?:ofts|fishtools):\\/\\/(?:import\\/|project\\/|p\\/)?/i, "")
+                .replace(/^https?:\\/\\/studio\\.cutefish\\.my\\.id\\/(?:import\\/|project\\/|p\\/)?/i, "")
+                .replace(/[/?#].*$/, "")
+                .replace(/[^a-zA-Z0-9_-]/g, "");
+              const target = id ? (baseHome + "?import=" + id + "#import=" + id) : homeUrl;
+              win.gBrowser.selectedBrowser.fixupAndLoadURIString(target, {
+                triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
+              });
+              return;
+            }
+            if (
               spec === "about:blank" ||
               spec.startsWith("about:newtab") ||
               spec.startsWith("about:home") ||
               spec.startsWith("about:welcome") ||
               spec.startsWith("about:preferences") ||
-              spec.startsWith("about:addons") ||
-              spec.startsWith("ofts:") ||
-              spec.startsWith("fishtools:")
+              spec.startsWith("about:addons")
             ) {
               win.gBrowser.selectedBrowser.fixupAndLoadURIString(homeUrl, {
                 triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal()
@@ -375,6 +390,11 @@ apply_studio_patches() {
   if [ -f "\$TARGET_STUDIO/js/frame-extractor.js" ]; then
     sed -i '' "s/this.maxRamFrames = 600;/this.maxRamFrames = 1800;/g" "\$TARGET_STUDIO/js/frame-extractor.js" 2>/dev/null || true
   fi
+  for html_file in index.html desktop.html editor.html; do
+    if [ -f "\$TARGET_STUDIO/\$html_file" ] && ! grep -q "__OFT_NATIVE_APP__" "\$TARGET_STUDIO/\$html_file" 2>/dev/null; then
+      sed -i '' 's|<head>|<head><script>window.__OFT_NATIVE_APP__=true;window.__OFT_PACKAGE_NAME__="com.cutefishaep.ofts";try{localStorage.removeItem("ofts_live_cdn_ver");}catch(_){}</script>|' "\$TARGET_STUDIO/\$html_file" 2>/dev/null || true
+    fi
+  done
 }
 
 mkdir -p "$RUNTIME_DIR"

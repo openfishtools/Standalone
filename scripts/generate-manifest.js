@@ -143,12 +143,11 @@ function generateManifest() {
     fs.copyFileSync(srcFile, dstFile);
   }
 
-  // Ensure version.json in staged copy matches build version
-  fs.writeFileSync(
-    path.join(stagedStudioDir, 'version.json'),
-    JSON.stringify({ version }, null, 2) + '\n',
-    'utf8'
-  );
+  // Keep Studio/version.json intact so local version matches Studio repo version (do not overwrite with Standalone installer version)
+  const studioVersionPath = path.join(studioRoot, 'version.json');
+  if (fs.existsSync(studioVersionPath)) {
+    fs.copyFileSync(studioVersionPath, path.join(stagedStudioDir, 'version.json'));
+  }
 
   // Normalize fticons.woff2 path for file:// protocol
   const stagedFticonsCss = path.join(stagedStudioDir, 'fticons/fticons.css');
@@ -230,7 +229,7 @@ function generateManifest() {
     fs.writeFileSync(stagedEffectsLoaderJs, loaderCode, 'utf8');
   }
 
-  const liveHotSwapScript = `<script>(function(){window.__OFT_NATIVE_APP__=true;window.__OFT_PACKAGE_NAME__='com.cutefishaep.ofts';try{var rv=localStorage.getItem('ofts_live_cdn_ver');if(rv&&rv!=='${version}'&&navigator.onLine){var base='https://cdn.jsdelivr.net/gh/openfishtools/Studio@main/';var obs=new MutationObserver(function(m){for(var i=0;i<m.length;i++){var nodes=m[i].addedNodes;for(var j=0;j<nodes.length;j++){var el=nodes[j];if(el&&el.tagName==='SCRIPT'){var s=el.getAttribute('src');if(s&&(s.indexOf('js/')===0||s.indexOf('./js/')===0)){el.setAttribute('src',base+s.replace(/^\\.\\//,'')+'?v='+encodeURIComponent(rv));}}else if(el&&el.tagName==='LINK'&&el.getAttribute('rel')==='stylesheet'){var h=el.getAttribute('href');if(h&&(h.indexOf('css/')===0||h.indexOf('./css/')===0)){el.setAttribute('href',base+h.replace(/^\\.\\//,'')+'?v='+encodeURIComponent(rv));}}}}});obs.observe(document.documentElement,{childList:true,subtree:true});}}catch(_){}})();</script>`;
+  const nativeBridgeScript = `<script>(function(){window.__OFT_NATIVE_APP__=true;window.__OFT_PACKAGE_NAME__='com.cutefishaep.ofts';try{localStorage.removeItem('ofts_live_cdn_ver');}catch(_){}if(!/index\\.html/i.test(window.location.pathname)){setInterval(function(){try{var x=new XMLHttpRequest();x.open('GET','../deeplink-live.json?t='+Date.now(),true);x.timeout=800;x.onload=function(){if((x.status===0||(x.status>=200&&x.status<300))&&x.responseText){try{var p=JSON.parse(x.responseText);if(p&&p.ts&&(p.url||p.id)){var lt=localStorage.getItem('oft_last_deeplink_ts');if(String(p.ts)!==String(lt)){var raw=String(p.id||p.url).replace(/^.*(?:ofts|fishtools):\\/\\/(?:import\\/|project\\/|p\\/)?/i,'').replace(/^https?:\\/\\/[^/]+\\//i,'').replace(/[/?#].*$/,'').replace(/[^a-zA-Z0-9_-]/g,'');if(raw){window.location.href='index.html?import='+encodeURIComponent(raw)+'#import='+encodeURIComponent(raw);}}}}catch(_){}}};x.send(null);}catch(_){}},800);}})();</script>`;
   for (const htmlName of ['index.html', 'desktop.html', 'editor.html']) {
     const htmlPath = path.join(stagedStudioDir, htmlName);
     if (fs.existsSync(htmlPath)) {
@@ -238,8 +237,8 @@ function generateManifest() {
       htmlRaw = htmlRaw
         .replace(/<title>OpenFishTools Studio/g, '<title>FishTools Studio')
         .replace(/ - OpenFishTools Studio'/g, " - FishTools Studio'");
-      if (!htmlRaw.includes('ofts_live_cdn_ver')) {
-        htmlRaw = htmlRaw.replace('<head>', `<head>\n  ${liveHotSwapScript}`);
+      if (!htmlRaw.includes('__OFT_NATIVE_APP__')) {
+        htmlRaw = htmlRaw.replace('<head>', `<head>\n  ${nativeBridgeScript}`);
       }
       fs.writeFileSync(htmlPath, htmlRaw, 'utf8');
     }

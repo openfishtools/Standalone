@@ -158,6 +158,7 @@
 
       setStatus(50, 'Checking github.com/openfishtools/Studio...');
       const remoteVersion = await checkRemoteVersion();
+      try { localStorage.removeItem('ofts_live_cdn_ver'); } catch (_) {}
 
       if (remoteVersion) {
         if (installedVersion !== remoteVersion || (diskVersion && diskVersion !== remoteVersion)) {
@@ -172,14 +173,8 @@
               localStorage.setItem('ofts_latest_effects_wasm_ver', remoteVersion);
             }
           } catch (_) {}
-          if (diskVersion && diskVersion !== remoteVersion) {
-            localStorage.setItem('ofts_live_cdn_ver', remoteVersion);
-          } else {
-            localStorage.removeItem('ofts_live_cdn_ver');
-          }
           localStorage.setItem('ofts_installed_version', remoteVersion);
         } else {
-          localStorage.removeItem('ofts_live_cdn_ver');
           setStatus(85, `Up to date (v${remoteVersion})`);
         }
       } else {
