@@ -777,19 +777,21 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
 - (void)writeDeepLinkBridgeFiles:(NSString *)rawUrl {
     if (!rawUrl || rawUrl.length == 0) return;
     NSString *rtDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.cutefishaep.ofts/runtime"];
+    NSString *studioDir = [rtDir stringByAppendingPathComponent:@"studio"];
     [[NSFileManager defaultManager] createDirectoryAtPath:rtDir withIntermediateDirectories:YES attributes:nil error:nil];
+    [[NSFileManager defaultManager] createDirectoryAtPath:studioDir withIntermediateDirectories:YES attributes:nil error:nil];
 
     NSString *escaped = [[rawUrl stringByReplacingOccurrencesOfString:@"\\\\" withString:@"\\\\\\\\"]
                          stringByReplacingOccurrencesOfString:@"\\"" withString:@"\\\\\\""];
     long long ts = (long long)([[NSDate date] timeIntervalSince1970] * 1000.0);
 
     NSString *jsonContent = [NSString stringWithFormat:@"{\\"url\\":\\"%@\\",\\"ts\\":%lld}\\n", escaped, ts];
-    NSString *jsonPath = [rtDir stringByAppendingPathComponent:@"deeplink-live.json"];
-    [jsonContent writeToFile:jsonPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [jsonContent writeToFile:[rtDir stringByAppendingPathComponent:@"deeplink-live.json"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [jsonContent writeToFile:[studioDir stringByAppendingPathComponent:@"deeplink-live.json"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\n", escaped];
-    NSString *jsPath = [rtDir stringByAppendingPathComponent:@"deeplink.js"];
-    [jsContent writeToFile:jsPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    NSString *jsContent = [NSString stringWithFormat:@"window.__OFT_DEEPLINK__ = \\"%@\\";\\nwindow.__OFT_DEEPLINK_TS__ = %lld;\\nif (typeof window.onNativeDeepLinkReceived === 'function') { window.onNativeDeepLinkReceived(\\"%@\\", %lld); }\\n", escaped, ts, escaped, ts];
+    [jsContent writeToFile:[rtDir stringByAppendingPathComponent:@"deeplink.js"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [jsContent writeToFile:[studioDir stringByAppendingPathComponent:@"deeplink.js"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
 - (void)handleGetURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
@@ -797,6 +799,12 @@ static void swizzled_setEventHandler(id self, SEL _cmd, id handler, SEL selector
     if (!urlStr || urlStr.length == 0) return;
     [self writeDeepLinkBridgeFiles:urlStr];
     [NSApp activateIgnoringOtherApps:YES];
+    for (NSWindow *win in [NSApp windows]) {
+        if ([win canBecomeKeyWindow] || [win isVisible]) {
+            [win makeKeyAndOrderFront:nil];
+            [win orderFrontRegardless];
+        }
+    }
 }
 
 - (void)showNativeAboutPanel:(id)sender {

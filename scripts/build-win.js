@@ -1071,15 +1071,30 @@ static void write_deeplink_bridge(const WCHAR* exeDir, const WCHAR* cliArg) {
     jsonBuf[k] = 0;
     write_ascii_file(jsonPath, jsonBuf);
 
-    char jsBuf[1536];
+    WCHAR studioJsonPath[2048], studioJsPath[2048];
+    wcpy(studioJsonPath, exeDir); wcat(studioJsonPath, L"\\\\resources\\\\app\\\\shell\\\\studio\\\\deeplink-live.json");
+    wcpy(studioJsPath, exeDir); wcat(studioJsPath, L"\\\\resources\\\\app\\\\shell\\\\studio\\\\deeplink.js");
+    write_ascii_file(studioJsonPath, jsonBuf);
+
+    char jsBuf[2048];
     const char* j1 = "window.__OFT_DEEPLINK__ = \\"";
-    const char* j2 = "\\";\\n";
+    const char* j2 = "\\";\\nwindow.__OFT_DEEPLINK_TS__ = ";
+    const char* j3 = ";\\nif (typeof window.onNativeDeepLinkReceived === 'function') { window.onNativeDeepLinkReceived(\\"";
+    const char* j4 = "\\", ";
+    const char* j5 = "); }\\n";
     k = 0;
     for (int i = 0; j1[i]; i++) jsBuf[k++] = j1[i];
     for (int i = 0; safeUrl[i]; i++) jsBuf[k++] = safeUrl[i];
     for (int i = 0; j2[i]; i++) jsBuf[k++] = j2[i];
+    for (int i = 0; tickBuf[i]; i++) jsBuf[k++] = tickBuf[i];
+    for (int i = 0; j3[i]; i++) jsBuf[k++] = j3[i];
+    for (int i = 0; safeUrl[i]; i++) jsBuf[k++] = safeUrl[i];
+    for (int i = 0; j4[i]; i++) jsBuf[k++] = j4[i];
+    for (int i = 0; tickBuf[i]; i++) jsBuf[k++] = tickBuf[i];
+    for (int i = 0; j5[i]; i++) jsBuf[k++] = j5[i];
     jsBuf[k] = 0;
     write_ascii_file(jsPath, jsBuf);
+    write_ascii_file(studioJsPath, jsBuf);
 }
 
 static void mirror_gecko_dir(const WCHAR* srcDir, const WCHAR* dstDir, int depth) {
