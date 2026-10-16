@@ -6,7 +6,7 @@ const OUTPUT_MANIFEST = path.resolve(STANDALONE_ROOT, 'shell/manifest.json');
 const STAGED_STUDIO_DIR = path.resolve(STANDALONE_ROOT, 'shell/studio');
 
 function generateManifest() {
-  let version = '1.0.2';
+  let version = '1.0.3';
   const pkgPath = path.join(STANDALONE_ROOT, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
