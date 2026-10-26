@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 2001;
     private static final String PREFS_NAME = "CuteFishStudioPrefs";
     private static final String KEY_INSTALLED_VERSION = "installed_version";
-    private static final String BUNDLED_VERSION = "1.2.0";
+    private static final String BUNDLED_VERSION = "1.2.1";
     private static final String STUDIO_ORIGIN = "studio.cutefish.my.id";
     private static final String BASE_URL = "https://studio.cutefish.my.id/";
 
@@ -146,24 +146,50 @@ public class MainActivity extends Activity {
                 intent.setType("*/*");
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 
-                if (fileChooserParams != null && fileChooserParams.getAcceptTypes() != null && fileChooserParams.getAcceptTypes().length > 0) {
-                    String[] acceptTypes = fileChooserParams.getAcceptTypes();
-                    if (acceptTypes.length == 1 && acceptTypes[0].length() > 0) {
-                        intent.setType(acceptTypes[0]);
-                    } else if (acceptTypes.length > 1) {
-                        intent.putExtra(Intent.EXTRA_MIME_TYPES, acceptTypes);
+                // Sanitize MIME types: never pass file extensions (like .ofts) to setType(),
+                // otherwise Android PackageManager fails with "No apps can perform this action"
+                if (fileChooserParams != null && fileChooserParams.getAcceptTypes() != null) {
+                    java.util.List<String> validMimes = new java.util.ArrayList<>();
+                    boolean hasCustomExtension = false;
+                    for (String t : fileChooserParams.getAcceptTypes()) {
+                        if (t != null) {
+                            String trimmed = t.trim();
+                            if (trimmed.startsWith(".")) {
+                                hasCustomExtension = true;
+                            } else if (trimmed.contains("/")) {
+                                validMimes.add(trimmed);
+                            }
+                        }
+                    }
+
+                    if (!hasCustomExtension && !validMimes.isEmpty()) {
+                        if (validMimes.size() == 1) {
+                            intent.setType(validMimes.get(0));
+                        } else {
+                            intent.putExtra(Intent.EXTRA_MIME_TYPES, validMimes.toArray(new String[0]));
+                        }
+                    } else {
+                        // For .ofts or custom extensions, ALWAYS keep */* so File Manager / Explorer opens!
+                        intent.setType("*/*");
                     }
                 }
 
                 try {
-                    startActivityForResult(Intent.createChooser(intent, "Select Media or 3D Model"), FILE_CHOOSER_REQUEST_CODE);
+                    Intent chooser = Intent.createChooser(intent, "Pilih File (.ofts / Media)");
+                    startActivityForResult(chooser, FILE_CHOOSER_REQUEST_CODE);
                     return true;
-                } catch (Exception e) {
-                    if (mFilePathCallback != null) {
-                        mFilePathCallback.onReceiveValue(null);
-                        mFilePathCallback = null;
+                } catch (Exception e1) {
+                    try {
+                        startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                        return true;
+                    } catch (Exception e2) {
+                        Log.e(TAG, "Cannot launch file picker: " + e2.getMessage(), e2);
+                        if (mFilePathCallback != null) {
+                            mFilePathCallback.onReceiveValue(null);
+                            mFilePathCallback = null;
+                        }
+                        return false;
                     }
-                    return false;
                 }
             }
         });
@@ -461,7 +487,7 @@ public class MainActivity extends Activity {
                 if (uriStr.startsWith("http://") || uriStr.startsWith("https://") || uriStr.startsWith("ofts://") || uriStr.startsWith("fishtools://")) {
                     mPendingDeepLink = uriStr;
                 } else {
-                    // File import (.ofts / .fishpreset / .json)
+                    // File import (.ofts only)
                     readIncomingFile(dataUri);
                 }
             }
@@ -470,6 +496,37 @@ public class MainActivity extends Activity {
 
     private void readIncomingFile(Uri uri) {
         try {
+            String fileName = null;
+
+            // 1. Try to get displayName from ContentResolver
+            if ("content".equalsIgnoreCase(uri.getScheme())) {
+                try (android.database.Cursor cursor = getContentResolver().query(
+                        uri, new String[]{ android.provider.OpenableColumns.DISPLAY_NAME }, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                        if (idx != -1) {
+                            fileName = cursor.getString(idx);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            // 2. Fallback to URI path if displayName not found
+            if (fileName == null) {
+                String path = uri.getPath();
+                if (path != null && path.contains("/")) {
+                    fileName = path.substring(path.lastIndexOf('/') + 1);
+                } else {
+                    fileName = uri.getLastPathSegment();
+                }
+            }
+
+            // Strictly accept .ofts ONLY
+            if (fileName == null || !fileName.toLowerCase().endsWith(".ofts")) {
+                Log.w(TAG, "Rejected file import: only .ofts project files are supported, got: " + fileName);
+                return;
+            }
+
             InputStream is = getContentResolver().openInputStream(uri);
             if (is == null) return;
 
@@ -483,18 +540,10 @@ public class MainActivity extends Activity {
 
             byte[] bytes = baos.toByteArray();
             mPendingFileContent = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            mPendingFileName = "preset_" + System.currentTimeMillis() + ".ofts";
-
-            // Extract real filename if present
-            String path = uri.getPath();
-            if (path != null && path.contains("/")) {
-                String last = path.substring(path.lastIndexOf('/') + 1);
-                if (last.toLowerCase().endsWith(".ofts") || last.toLowerCase().endsWith(".fishpreset") || last.toLowerCase().endsWith(".json")) {
-                    mPendingFileName = last;
-                }
-            }
+            mPendingFileName = fileName;
+            Log.i(TAG, "Successfully staged .ofts project file: " + fileName + " (" + bytes.length + " bytes)");
         } catch (Exception e) {
-            Log.e(TAG, "Error reading incoming preset file: " + e.getMessage(), e);
+            Log.e(TAG, "Error reading incoming .ofts file: " + e.getMessage(), e);
         }
     }
 
@@ -537,6 +586,25 @@ public class MainActivity extends Activity {
         public void checkUpdateNow() {
             startBackgroundUpdateCheck();
         }
+
+        @JavascriptInterface
+        public void openOftsPicker() {
+            mMainHandler.post(() -> {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                try {
+                    Intent chooser = Intent.createChooser(intent, "Pilih File Project (.ofts)");
+                    startActivityForResult(chooser, FILE_CHOOSER_REQUEST_CODE);
+                } catch (Exception e) {
+                    try {
+                        startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                    } catch (Exception e2) {
+                        Log.e(TAG, "Cannot launch file picker: " + e2.getMessage(), e2);
+                    }
+                }
+            });
+        }
     }
 
     @Override
@@ -544,8 +612,6 @@ public class MainActivity extends Activity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
-            if (mFilePathCallback == null) return;
-
             Uri[] results = null;
             if (resultCode == Activity.RESULT_OK && data != null) {
                 if (data.getData() != null) {
@@ -560,8 +626,14 @@ public class MainActivity extends Activity {
                 }
             }
 
-            mFilePathCallback.onReceiveValue(results);
-            mFilePathCallback = null;
+            if (mFilePathCallback != null) {
+                mFilePathCallback.onReceiveValue(results);
+                mFilePathCallback = null;
+            } else if (results != null && results.length > 0 && results[0] != null) {
+                // Picked via native openOftsPicker()
+                readIncomingFile(results[0]);
+                dispatchPendingIntents();
+            }
         }
     }
 
