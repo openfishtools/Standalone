@@ -1,7 +1,9 @@
 package com.cutefish.studio;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ClipData;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -9,10 +11,14 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.ClipDrawable;
 import android.graphics.drawable.LayerDrawable;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
@@ -20,7 +26,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
+import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -32,6 +41,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -41,6 +51,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -52,7 +63,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 2001;
     private static final String PREFS_NAME = "CuteFishStudioPrefs";
     private static final String KEY_INSTALLED_VERSION = "installed_version";
-    private static final String BUNDLED_VERSION = "1.2.1";
+    private static final String BUNDLED_VERSION = "1.2.2";
     private static final String STUDIO_ORIGIN = "studio.cutefish.my.id";
     private static final String BASE_URL = "https://studio.cutefish.my.id/";
 
@@ -70,6 +81,14 @@ public class MainActivity extends Activity {
     private String mPendingDeepLink = null;
     private String mPendingFileContent = null;
     private String mPendingFileName = null;
+
+    // Active download / export state
+    private OutputStream mCurrentDownloadStream = null;
+    private ContentValues mCurrentDownloadValues = null;
+    private Uri mCurrentDownloadUri = null;
+    private File mCurrentDownloadFile = null;
+    private String mCurrentDownloadFilename = null;
+    private String mCurrentDownloadMime = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -194,6 +213,37 @@ public class MainActivity extends Activity {
             }
         });
 
+        // DownloadListener: Handles standard HTTP/HTTPS file downloads into system Download directory
+        mWebView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+                if (url == null || url.startsWith("blob:") || url.startsWith("data:")) return;
+                try {
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    String safeName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+                    String safeMime = resolveMimeType(safeName, mimetype);
+                    request.setMimeType(safeMime);
+                    request.setTitle(safeName);
+                    request.setDescription("Downloading " + safeName);
+                    try {
+                        String cookies = CookieManager.getInstance().getCookie(url);
+                        if (cookies != null) request.addRequestHeader("cookie", cookies);
+                    } catch (Exception ignored) {}
+                    if (userAgent != null) request.addRequestHeader("User-Agent", userAgent);
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName);
+
+                    DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    if (dm != null) {
+                        dm.enqueue(request);
+                        Toast.makeText(MainActivity.this, "Mengunduh " + safeName + "...", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "DownloadManager error: " + e.getMessage(), e);
+                }
+            }
+        });
+
         // WebViewClient: Intercepts requests for 100% Offline Support & Persistent Sandbox Storage
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
@@ -237,6 +287,9 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 mIsPageLoaded = true;
+
+                // Inject Native Download & Export Bridge Hook
+                injectDownloadHook(view);
 
                 // Dispatch any pending deep link or file import
                 dispatchPendingIntents();
@@ -605,6 +658,298 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public void saveBlobToDownloads(String filename, String base64Data, String mimeType) {
+            try {
+                startChunkedDownload(filename, mimeType, 0);
+                appendDownloadChunk(base64Data);
+                finishChunkedDownload();
+            } catch (Exception e) {
+                Log.e(TAG, "saveBlobToDownloads failed: " + e.getMessage(), e);
+                cancelChunkedDownload();
+            }
+        }
+
+        @JavascriptInterface
+        public synchronized void startChunkedDownload(String filename, String mimeType, long totalBytes) {
+            try {
+                cancelChunkedDownload();
+
+                String safeName = sanitizeFilename(filename);
+                String resolvedMime = resolveMimeType(safeName, mimeType);
+                mCurrentDownloadFilename = safeName;
+                mCurrentDownloadMime = resolvedMime;
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime);
+                    values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+
+                    mCurrentDownloadValues = values;
+                    mCurrentDownloadUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (mCurrentDownloadUri != null) {
+                        mCurrentDownloadStream = getContentResolver().openOutputStream(mCurrentDownloadUri);
+                    }
+                }
+
+                // Fallback for pre-Android 10 or if MediaStore insert failed
+                if (mCurrentDownloadStream == null) {
+                    File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!downloadDir.exists()) downloadDir.mkdirs();
+
+                    File dest = new File(downloadDir, safeName);
+                    int counter = 1;
+                    String base = safeName;
+                    String ext = "";
+                    int dot = safeName.lastIndexOf('.');
+                    if (dot != -1) {
+                        base = safeName.substring(0, dot);
+                        ext = safeName.substring(dot);
+                    }
+                    while (dest.exists()) {
+                        dest = new File(downloadDir, base + " (" + counter + ")" + ext);
+                        counter++;
+                    }
+                    mCurrentDownloadFile = dest;
+                    mCurrentDownloadStream = new FileOutputStream(dest);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "startChunkedDownload error: " + e.getMessage(), e);
+                cancelChunkedDownload();
+            }
+        }
+
+        @JavascriptInterface
+        public synchronized void appendDownloadChunk(String chunkBase64) {
+            if (mCurrentDownloadStream == null || chunkBase64 == null || chunkBase64.isEmpty()) return;
+            try {
+                byte[] bytes = Base64.decode(chunkBase64, Base64.DEFAULT);
+                mCurrentDownloadStream.write(bytes);
+            } catch (Exception e) {
+                Log.e(TAG, "appendDownloadChunk error: " + e.getMessage(), e);
+            }
+        }
+
+        @JavascriptInterface
+        public synchronized void finishChunkedDownload() {
+            if (mCurrentDownloadStream == null) return;
+            try {
+                mCurrentDownloadStream.flush();
+                mCurrentDownloadStream.close();
+                mCurrentDownloadStream = null;
+
+                final String finalName = mCurrentDownloadFilename != null ? mCurrentDownloadFilename : "file";
+                final String finalMime = mCurrentDownloadMime != null ? mCurrentDownloadMime : "application/octet-stream";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && mCurrentDownloadUri != null && mCurrentDownloadValues != null) {
+                    mCurrentDownloadValues.clear();
+                    mCurrentDownloadValues.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                    getContentResolver().update(mCurrentDownloadUri, mCurrentDownloadValues, null, null);
+                }
+
+                if (mCurrentDownloadFile != null) {
+                    MediaScannerConnection.scanFile(
+                        MainActivity.this,
+                        new String[]{ mCurrentDownloadFile.getAbsolutePath() },
+                        new String[]{ finalMime },
+                        null
+                    );
+                }
+
+                mMainHandler.post(() -> {
+                    Toast.makeText(MainActivity.this, "Tersimpan di Download: " + finalName, Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "finishChunkedDownload error: " + e.getMessage(), e);
+            } finally {
+                mCurrentDownloadStream = null;
+                mCurrentDownloadValues = null;
+                mCurrentDownloadUri = null;
+                mCurrentDownloadFile = null;
+                mCurrentDownloadFilename = null;
+                mCurrentDownloadMime = null;
+            }
+        }
+
+        @JavascriptInterface
+        public synchronized void cancelChunkedDownload() {
+            if (mCurrentDownloadStream != null) {
+                try {
+                    mCurrentDownloadStream.close();
+                } catch (Exception ignored) {}
+                mCurrentDownloadStream = null;
+            }
+            if (mCurrentDownloadUri != null) {
+                try {
+                    getContentResolver().delete(mCurrentDownloadUri, null, null);
+                } catch (Exception ignored) {}
+                mCurrentDownloadUri = null;
+            }
+            if (mCurrentDownloadFile != null && mCurrentDownloadFile.exists()) {
+                try {
+                    mCurrentDownloadFile.delete();
+                } catch (Exception ignored) {}
+                mCurrentDownloadFile = null;
+            }
+            mCurrentDownloadValues = null;
+            mCurrentDownloadFilename = null;
+            mCurrentDownloadMime = null;
+        }
+
+        @JavascriptInterface
+        public void downloadFromUrl(String url, String filename, String mimeType) {
+            if (url == null || url.isEmpty()) return;
+            mMainHandler.post(() -> {
+                try {
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    String safeName = (filename != null && !filename.isEmpty()) ? filename : URLUtil.guessFileName(url, null, mimeType);
+                    String safeMime = resolveMimeType(safeName, mimeType);
+                    request.setMimeType(safeMime);
+                    request.setTitle(safeName);
+                    request.setDescription("Downloading " + safeName);
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName);
+
+                    DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    if (dm != null) {
+                        dm.enqueue(request);
+                        Toast.makeText(MainActivity.this, "Mengunduh " + safeName + "...", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "downloadFromUrl error: " + e.getMessage(), e);
+                }
+            });
+        }
+    }
+
+    private void injectDownloadHook(WebView view) {
+        String hookScript =
+            "(function() {\n" +
+            "  if (window.__NATIVE_DOWNLOAD_HOOK_INSTALLED__) return;\n" +
+            "  window.__NATIVE_DOWNLOAD_HOOK_INSTALLED__ = true;\n" +
+            "  \n" +
+            "  window.saveBlobViaNativeBridge = function(blob, filename, mimeType) {\n" +
+            "    if (!window.AndroidBridge) return false;\n" +
+            "    var mime = mimeType || (blob && blob.type) || 'application/octet-stream';\n" +
+            "    var name = filename || ('download_' + Date.now());\n" +
+            "    var CHUNK_SIZE = 512 * 1024;\n" +
+            "    if (!blob || blob.size <= CHUNK_SIZE) {\n" +
+            "      var reader = new FileReader();\n" +
+            "      reader.onloadend = function() {\n" +
+            "        try {\n" +
+            "          var res = reader.result || '';\n" +
+            "          var b64 = res.indexOf(',') !== -1 ? res.split(',')[1] : res;\n" +
+            "          if (window.AndroidBridge && typeof window.AndroidBridge.saveBlobToDownloads === 'function') {\n" +
+            "            window.AndroidBridge.saveBlobToDownloads(name, b64, mime);\n" +
+            "          }\n" +
+            "        } catch(e) { console.warn('saveBlob error:', e); }\n" +
+            "      };\n" +
+            "      reader.readAsDataURL(blob || new Blob([]));\n" +
+            "    } else {\n" +
+            "      try {\n" +
+            "        if (typeof window.AndroidBridge.startChunkedDownload === 'function') {\n" +
+            "          window.AndroidBridge.startChunkedDownload(name, mime, blob.size);\n" +
+            "        }\n" +
+            "      } catch(e) { console.warn('startChunked error:', e); return false; }\n" +
+            "      var offset = 0;\n" +
+            "      function sendNext() {\n" +
+            "        if (offset >= blob.size) {\n" +
+            "          if (window.AndroidBridge && typeof window.AndroidBridge.finishChunkedDownload === 'function') {\n" +
+            "            window.AndroidBridge.finishChunkedDownload();\n" +
+            "          }\n" +
+            "          return;\n" +
+            "        }\n" +
+            "        var slice = blob.slice(offset, offset + CHUNK_SIZE);\n" +
+            "        var chunkReader = new FileReader();\n" +
+            "        chunkReader.onloadend = function() {\n" +
+            "          try {\n" +
+            "            var res = chunkReader.result || '';\n" +
+            "            var b64Chunk = res.indexOf(',') !== -1 ? res.split(',')[1] : res;\n" +
+            "            if (window.AndroidBridge && typeof window.AndroidBridge.appendDownloadChunk === 'function') {\n" +
+            "              window.AndroidBridge.appendDownloadChunk(b64Chunk);\n" +
+            "            }\n" +
+            "            offset += CHUNK_SIZE;\n" +
+            "            sendNext();\n" +
+            "          } catch(e) {\n" +
+            "            console.error('chunk error:', e);\n" +
+            "            if (window.AndroidBridge && typeof window.AndroidBridge.cancelChunkedDownload === 'function') {\n" +
+            "              window.AndroidBridge.cancelChunkedDownload();\n" +
+            "            }\n" +
+            "          }\n" +
+            "        };\n" +
+            "        chunkReader.readAsDataURL(slice);\n" +
+            "      }\n" +
+            "      sendNext();\n" +
+            "    }\n" +
+            "    return true;\n" +
+            "  };\n" +
+            "  \n" +
+            "  var origClick = HTMLAnchorElement.prototype.click;\n" +
+            "  HTMLAnchorElement.prototype.click = function() {\n" +
+            "    try {\n" +
+            "      var hasDownload = this.hasAttribute('download');\n" +
+            "      var href = this.href || '';\n" +
+            "      var downloadName = this.getAttribute('download') || this.download || 'download';\n" +
+            "      if (hasDownload && href && window.AndroidBridge) {\n" +
+            "        if (href.startsWith('blob:')) {\n" +
+            "          fetch(href)\n" +
+            "            .then(function(res) { return res.blob(); })\n" +
+            "            .then(function(b) { window.saveBlobViaNativeBridge(b, downloadName, b.type); })\n" +
+            "            .catch(function(e) { console.warn('fetch blob fail:', e); origClick.call(this); });\n" +
+            "          return;\n" +
+            "        } else if (href.startsWith('data:')) {\n" +
+            "          var parts = href.split(',');\n" +
+            "          var mime = parts[0].indexOf(':') !== -1 ? parts[0].split(':')[1].split(';')[0] : 'application/octet-stream';\n" +
+            "          var b64 = parts[1] || '';\n" +
+            "          if (window.AndroidBridge && typeof window.AndroidBridge.saveBlobToDownloads === 'function') {\n" +
+            "            window.AndroidBridge.saveBlobToDownloads(downloadName, b64, mime);\n" +
+            "            return;\n" +
+            "          }\n" +
+            "        } else if (href.startsWith('http://') || href.startsWith('https://')) {\n" +
+            "          if (window.AndroidBridge && typeof window.AndroidBridge.downloadFromUrl === 'function') {\n" +
+            "            window.AndroidBridge.downloadFromUrl(href, downloadName, '');\n" +
+            "            return;\n" +
+            "          }\n" +
+            "        }\n" +
+            "      }\n" +
+            "    } catch(err) { console.warn('download hook error:', err); }\n" +
+            "    return origClick.call(this);\n" +
+            "  };\n" +
+            "})();";
+        view.evaluateJavascript(hookScript, null);
+    }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null || filename.trim().isEmpty()) {
+            return "download_" + System.currentTimeMillis();
+        }
+        String safe = filename.trim().replaceAll("[/\\\\?%*:|\"<>]", "_");
+        if (safe.isEmpty()) {
+            return "download_" + System.currentTimeMillis();
+        }
+        return safe;
+    }
+
+    private String resolveMimeType(String filename, String fallback) {
+        if (filename != null) {
+            String lower = filename.toLowerCase();
+            if (lower.endsWith(".ofts")) return "application/octet-stream";
+            if (lower.endsWith(".mp4")) return "video/mp4";
+            if (lower.endsWith(".webm")) return "video/webm";
+            if (lower.endsWith(".zip")) return "application/zip";
+            if (lower.endsWith(".png")) return "image/png";
+            if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+            if (lower.endsWith(".webp")) return "image/webp";
+            if (lower.endsWith(".gif")) return "image/gif";
+            if (lower.endsWith(".wav")) return "audio/wav";
+            if (lower.endsWith(".mp3")) return "audio/mpeg";
+            if (lower.endsWith(".json")) return "application/json";
+        }
+        if (fallback != null && !fallback.isEmpty()) return fallback;
+        return "application/octet-stream";
     }
 
     @Override

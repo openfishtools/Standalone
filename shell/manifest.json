@@ -1,21 +1,21 @@
 {
   "name": "FishTools Studio",
-  "version": "1.2.1",
-  "studioVersion": "0.6.5",
-  "timestamp": 1793021103440,
-  "generatedAt": "2026-10-26T13:25:03.440Z",
+  "version": "1.2.2",
+  "studioVersion": "0.6.6",
+  "timestamp": 1793027592423,
+  "generatedAt": "2026-10-26T15:13:12.423Z",
   "files": {
     "index.html": {
-      "size": 264508,
-      "sha256": "35d1a05d13dba23639cc6fb90555391322a642afa0713373b3b725930e770afc"
+      "size": 268449,
+      "sha256": "bd5ad8c0c044f9fd3d969fe96aab16075ad36ab9e7eee9babd6e7baab6777a1f"
     },
     "desktop.html": {
-      "size": 476216,
-      "sha256": "64dc074aeffe9624ea27053e8e9a7d370a2f21253912043a84f2f7eceadd6843"
+      "size": 480157,
+      "sha256": "cebf7855e573ebb6ee23bdbfc40069242aa105be58c838c6cda8cc50de077f53"
     },
     "editor.html": {
-      "size": 456282,
-      "sha256": "f6efe1006844c429903bd97e6da049b21f48606c2ff087d5268038c2627442a0"
+      "size": 460223,
+      "sha256": "a2711bc10bcefe9e0b2723ca575980fdbe2772da632c268661b115981d894416"
     },
     "privacy.html": {
       "size": 7481,
@@ -27,7 +27,7 @@
     },
     "version.json": {
       "size": 25,
-      "sha256": "675483f4a913928ac23ae8a67b31959d0316874843c12f8cf346f852c7139aaf"
+      "sha256": "dec736ee5ad8e04057e74d05e19044efd7cbd00fb20a4c1030374242fabf65e4"
     },
     "manifest.webmanifest": {
       "size": 784,
@@ -38,8 +38,8 @@
       "sha256": "438a9bb806fdce5cb87da10df7f5a3a077dad3b0e6dc2fc764cdc1d202558483"
     },
     "js/app/main.js": {
-      "size": 117944,
-      "sha256": "1b36c164c0398f0768756292659e2c3228ca9051a4917cfe20a9a86225c99b9b"
+      "size": 122139,
+      "sha256": "246268beb3e83079951e53107e1904f3e2710a9b33eb048dc9c2de93af747d81"
     },
     "js/app/pwa-install.js": {
       "size": 2563,
@@ -74,8 +74,8 @@
       "sha256": "aa7f0a6bd31b6738d1155cbcf333bc32c2a43d7c20c99f9bf14cb9ad86ee4bba"
     },
     "js/editor/editor-canvas.js": {
-      "size": 238714,
-      "sha256": "dbbced8d5a0419a681621d938596fc20051036026030669b28f8184199fdfa77"
+      "size": 239193,
+      "sha256": "b7d14eb33ab1975a2a3719e701e28b9f466033233a16cabab47ed76c7c884476"
     },
     "js/editor/editor-effects.js": {
       "size": 157987,
@@ -86,8 +86,8 @@
       "sha256": "c423f8c606151cfb3e5e85894363c3fcb5b40d65ae02a3cd0e81c44ef0e3b7db"
     },
     "js/editor/editor-extension-bridge.js": {
-      "size": 94239,
-      "sha256": "cd81082f6befee3171886193b1611da5ca20d4285344052c1ccb61b9c1483803"
+      "size": 94817,
+      "sha256": "8c5b30005d7c2709e7aad834c2492a4fd8a4bc0d33d8615ff6a600b8ff9597a8"
     },
     "js/editor/editor-inspector.js": {
       "size": 228731,
@@ -118,28 +118,28 @@
       "sha256": "4d843fb0d1296c48b7b0150528d06f99248e2b75fa99f0af24e4e4cee70da963"
     },
     "js/extensions/JSX-Translator.js": {
-      "size": 95159,
-      "sha256": "a7a71224a1a11b5ec39852bd5250ea2889a55075b483a7c3ceb95e94f1d0af9a"
+      "size": 95187,
+      "sha256": "2edf6684cf08740fe4c79aa3f623982feb209c9b59ed72a7940541eab9240c70"
     },
     "js/extensions/attributes-clipboard.js": {
       "size": 57100,
       "sha256": "641e8796c9c70cda02e20f577984b5ba24b2b1c0303aec02243f3952d6cd6ffa"
     },
     "js/extensions/extension-manager.js": {
-      "size": 34176,
-      "sha256": "eb616cb02a7473ae75d06073f75f725d5b5c1abe24a548dd5b8d34ae9d4d229a"
+      "size": 34377,
+      "sha256": "1cd8bb6977ab81fb0c1941a684e0196bf7b66367b6ad737162e7c73ce7fb2b7d"
     },
     "js/extensions/extensions.js": {
       "size": 16756,
       "sha256": "0ab714fa3272cbbd009590555f0c4c75486fefadef118fc1be79dc0c04db48ee"
     },
     "js/extensions/fishtools-adapter.js": {
-      "size": 75944,
-      "sha256": "90a258c684146c6ea0910da4d9a44325d7a5586a30fdf4438e82ff1c99c18d20"
+      "size": 76077,
+      "sha256": "ca8bf62c6420e6e8212378f3ee787fd5290448d76287912679e07923178b15b4"
     },
     "js/extensions/openfishtools-controller.js": {
-      "size": 126198,
-      "sha256": "31279779eb16fd53432454e6c73082881e96c90e60ce62b78595c152fd35355f"
+      "size": 126226,
+      "sha256": "b2134daa61ba3e3886aa213a5de619ce26f41857db77e59732303b13f93ebceb"
     },
     "js/extensions/openfishtools-generators3d.js": {
       "size": 55906,
@@ -154,16 +154,16 @@
       "sha256": "19e7a14066693423f81fbf4964d8c47c1f177d38dba42c4ea41b6933b061bb4d"
     },
     "js/media/fish-export-engine.js": {
-      "size": 92020,
-      "sha256": "672b9cddd47bc5ccc8f44217d09f159adf794939c20b9f840b7afd0b3f29dd66"
+      "size": 92218,
+      "sha256": "f9ac3b7ff88856f8e0f7e20f3e97db487d068b5022a42bf1e30c65b507a7296f"
     },
     "js/media/frame-extractor.js": {
-      "size": 169175,
-      "sha256": "bc197ee2638001513852f5fb74b50eebd9847e8cf99f4f94201130bc21247d4e"
+      "size": 171929,
+      "sha256": "5c9a50a276452b08be795653f79d7ac2686bcd271c4a274bdff491247d913b15"
     },
     "js/media/preview-cache.js": {
-      "size": 69335,
-      "sha256": "5188dcdced3489766c8bc4fd749dde8e4848e4b6f67647d6b93230a8b54e36de"
+      "size": 79134,
+      "sha256": "ee3155741cab338d53305c420f35f3bbd63008ade0d114da928d85f272033f37"
     },
     "js/media/video-decoder-worker.js": {
       "size": 19139,
@@ -222,8 +222,8 @@
       "sha256": "123b4a742f71b5166a506aea28043a85ee429ea8610dcd907a7b76c89996c30e"
     },
     "js/storage/db.js": {
-      "size": 111231,
-      "sha256": "38442a5637ad692500b2c2210153ad5c90ef558833492a773e2f2be42390e74b"
+      "size": 111429,
+      "sha256": "1fc21af395fb94aebf24fc6353322f2e466cf06e8f903544949a32e117f99222"
     },
     "js/ui/color-picker.js": {
       "size": 27745,
@@ -238,8 +238,8 @@
       "sha256": "1b7d70bb54ec9f8437fab91774d220aa09908c745c30b840826fe5510fd00dc9"
     },
     "js/ui/elements/card-builder.js": {
-      "size": 32095,
-      "sha256": "42327e736d0ad8087f6416341e1caae2f81dab47bd5df62a5d858d0d28de6c9e"
+      "size": 33893,
+      "sha256": "0d8562f2bb09a54987ea0de443731f9183988bc8b1451f5a7394082d769e8b0f"
     },
     "js/ui/elements/color-input.js": {
       "size": 4315,
