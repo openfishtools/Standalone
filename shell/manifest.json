@@ -1,13 +1,13 @@
 {
   "name": "FishTools Studio",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "studioVersion": "0.6.5",
-  "timestamp": 1793000948636,
-  "generatedAt": "2026-10-26T07:49:08.636Z",
+  "timestamp": 1793005351848,
+  "generatedAt": "2026-10-26T09:02:31.848Z",
   "files": {
     "index.html": {
-      "size": 264421,
-      "sha256": "53bb96292b5e970f118c05095d3991ea62403f1370175f1eeeff362cbeb32854"
+      "size": 264508,
+      "sha256": "35d1a05d13dba23639cc6fb90555391322a642afa0713373b3b725930e770afc"
     },
     "desktop.html": {
       "size": 476216,
@@ -38,8 +38,8 @@
       "sha256": "438a9bb806fdce5cb87da10df7f5a3a077dad3b0e6dc2fc764cdc1d202558483"
     },
     "js/app/main.js": {
-      "size": 115498,
-      "sha256": "a5a31d3404e77422a5f0d87967465d5908a3b549b2e9078f21524972da199e81"
+      "size": 115537,
+      "sha256": "ae22ebe2951ff688bf71a6bd37d36e1f03b48339a0bb246a3cc46ecd05537f10"
     },
     "js/app/pwa-install.js": {
       "size": 2563,

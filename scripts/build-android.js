@@ -27,9 +27,9 @@ const MAX_SDK = 0x7fffffff;
 
 function ensurePersistentSigningCert() {
   fs.mkdirSync(CERT_DIR, { recursive: true });
-  const keyPath = path.join(CERT_DIR, 'openfishtools-release.key');
-  const certPemPath = path.join(CERT_DIR, 'openfishtools-release.pem');
-  const certDerPath = path.join(CERT_DIR, 'openfishtools-release.der');
+  const keyPath = path.join(CERT_DIR, 'cutefish-release.key');
+  const certPemPath = path.join(CERT_DIR, 'cutefish-release.pem');
+  const certDerPath = path.join(CERT_DIR, 'cutefish-release.der');
   const opensslCfgPath = path.join(CERT_DIR, 'openssl-codesign.cnf');
   const opensslBin = fs.existsSync('/opt/local/bin/openssl') ? '/opt/local/bin/openssl' : 'openssl';
 
@@ -43,9 +43,9 @@ prompt = no
 C = ID
 ST = DKI Jakarta
 L = Jakarta
-O = OpenFishTools Foundation
-OU = Desktop and Mobile Engineering
-CN = OpenFishTools Studio Official Release
+O = CuteFish Studio
+OU = Mobile Studio Engineering
+CN = CuteFish Studio
 
 [v3_codesign]
 basicConstraints = critical,CA:FALSE
@@ -56,7 +56,7 @@ authorityKeyIdentifier = keyid:always
 `;
     fs.writeFileSync(opensslCfgPath, cnf, 'utf8');
     execSync(
-      `"${opensslBin}" req -new -x509 -nodes -newkey rsa:2048 -sha256 -days 9125 -config "${opensslCfgPath}" -keyout "${keyPath}" -out "${certPemPath}"`,
+      `"${opensslBin}" req -new -x509 -nodes -newkey rsa:2048 -sha256 -days 10000 -config "${opensslCfgPath}" -keyout "${keyPath}" -out "${certPemPath}"`,
       { stdio: 'ignore' }
     );
     execSync(
@@ -122,7 +122,7 @@ function buildBinaryAndroidManifest(versionCode, versionName) {
     '',
     'manifest',
     'package',
-    'com.cutefishaep.ofts',
+    'com.cutefish.studio',
     versionName,
     'uses-sdk',
     'uses-permission',
@@ -130,7 +130,7 @@ function buildBinaryAndroidManifest(versionCode, versionName) {
     'application',
     'FishTools Studio',
     'activity',
-    'com.cutefishaep.ofts.MainActivity',
+    'com.cutefish.studio.MainActivity',
     'intent-filter',
     'action',
     'android.intent.action.MAIN',
@@ -289,7 +289,7 @@ function buildBinaryAndroidManifest(versionCode, versionName) {
     makeStartElement('manifest', 2, [
       attrInt(NS_ANDROID, 'versionCode', versionCode),
       attrStr(NS_ANDROID, 'versionName', versionName),
-      attrStr(NS_NONE, 'package', 'com.cutefishaep.ofts')
+      attrStr(NS_NONE, 'package', 'com.cutefish.studio')
     ]),
     makeStartElement('uses-sdk', 3, [
       attrInt(NS_ANDROID, 'minSdkVersion', MIN_SDK),
@@ -309,7 +309,7 @@ function buildBinaryAndroidManifest(versionCode, versionName) {
       attrBool(NS_ANDROID, 'allowBackup', false)
     ]),
     makeStartElement('activity', 6, [
-      attrStr(NS_ANDROID, 'name', 'com.cutefishaep.ofts.MainActivity'),
+      attrStr(NS_ANDROID, 'name', 'com.cutefish.studio.MainActivity'),
       attrStr(NS_ANDROID, 'label', 'FishTools Studio'),
       attrBool(NS_ANDROID, 'exported', true),
       attrInt(NS_ANDROID, 'configChanges', 0x000004a0, true)
@@ -466,7 +466,7 @@ function buildResourcesArsc() {
   pkgHeader.writeUInt16LE(pkgHeaderSize, 2);
   pkgHeader.writeUInt32LE(pkgChunkSize, 4);
   pkgHeader.writeUInt32LE(0x7f, 8);
-  Buffer.from('com.cutefishaep.ofts', 'utf16le').copy(pkgHeader, 12);
+  Buffer.from('com.cutefish.studio', 'utf16le').copy(pkgHeader, 12);
   pkgHeader.writeUInt32LE(pkgHeaderSize, 268);
   pkgHeader.writeUInt32LE(1, 272);
   pkgHeader.writeUInt32LE(pkgHeaderSize + typePool.length, 276);
@@ -484,7 +484,7 @@ function buildResourcesArsc() {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Clean Dalvik classes.dex Generator (com.cutefishaep.ofts.MainActivity + Deep Link Intent)
+// 3. Clean Dalvik classes.dex Generator (com.cutefish.studio.MainActivity + Deep Link Intent)
 // ---------------------------------------------------------------------------
 function uleb128(val) {
   const bytes = [];
@@ -509,7 +509,8 @@ function adler32(buf) {
 }
 
 function buildClassesDex() {
-  // Clean method set: NO `setAllowUniversalAccessFromFileURLs` + supports getIntent().getDataString() for studio.cutefish.my.id
+  // Clean method set: ZERO `setAllowFileAccessFromFileURLs` / `setAllowUniversalAccessFromFileURLs`
+  // Fully Play-Protect compliant + supports Intent.getDataString() for studio.cutefish.my.id deep links
   const strings = [
     '<init>',
     'I',
@@ -524,7 +525,7 @@ function buildClassesDex() {
     'Landroid/webkit/WebSettings;',
     'Landroid/webkit/WebView;',
     'Landroid/webkit/WebViewClient;',
-    'Lcom/cutefishaep/ofts/MainActivity;',
+    'Lcom/cutefish/studio/MainActivity;',
     'Ljava/lang/String;',
     'V',
     'VL',
@@ -541,7 +542,6 @@ function buildClassesDex() {
     'requestWindowFeature',
     'setAllowContentAccess',
     'setAllowFileAccess',
-    'setAllowFileAccessFromFileURLs',
     'setContentView',
     'setDatabaseEnabled',
     'setDomStorageEnabled',
@@ -568,7 +568,7 @@ function buildClassesDex() {
     'Landroid/webkit/WebSettings;',
     'Landroid/webkit/WebView;',
     'Landroid/webkit/WebViewClient;',
-    'Lcom/cutefishaep/ofts/MainActivity;',
+    'Lcom/cutefish/studio/MainActivity;',
     'Ljava/lang/String;',
     'V',
     'Z'
@@ -621,7 +621,6 @@ function buildClassesDex() {
     { cls: 'Landroid/webkit/WebChromeClient;', name: '<init>', ret: 'V', params: [] },
     { cls: 'Landroid/webkit/WebSettings;', name: 'setAllowContentAccess', ret: 'V', params: ['Z'] },
     { cls: 'Landroid/webkit/WebSettings;', name: 'setAllowFileAccess', ret: 'V', params: ['Z'] },
-    { cls: 'Landroid/webkit/WebSettings;', name: 'setAllowFileAccessFromFileURLs', ret: 'V', params: ['Z'] },
     { cls: 'Landroid/webkit/WebSettings;', name: 'setDatabaseEnabled', ret: 'V', params: ['Z'] },
     { cls: 'Landroid/webkit/WebSettings;', name: 'setDomStorageEnabled', ret: 'V', params: ['Z'] },
     { cls: 'Landroid/webkit/WebSettings;', name: 'setJavaScriptEnabled', ret: 'V', params: ['Z'] },
@@ -632,8 +631,8 @@ function buildClassesDex() {
     { cls: 'Landroid/webkit/WebView;', name: 'setWebChromeClient', ret: 'V', params: ['Landroid/webkit/WebChromeClient;'] },
     { cls: 'Landroid/webkit/WebView;', name: 'setWebViewClient', ret: 'V', params: ['Landroid/webkit/WebViewClient;'] },
     { cls: 'Landroid/webkit/WebViewClient;', name: '<init>', ret: 'V', params: [] },
-    { cls: 'Lcom/cutefishaep/ofts/MainActivity;', name: '<init>', ret: 'V', params: [] },
-    { cls: 'Lcom/cutefishaep/ofts/MainActivity;', name: 'onCreate', ret: 'V', params: ['Landroid/os/Bundle;'] },
+    { cls: 'Lcom/cutefish/studio/MainActivity;', name: '<init>', ret: 'V', params: [] },
+    { cls: 'Lcom/cutefish/studio/MainActivity;', name: 'onCreate', ret: 'V', params: ['Landroid/os/Bundle;'] },
     { cls: 'Ljava/lang/String;', name: 'concat', ret: 'Ljava/lang/String;', params: ['Ljava/lang/String;'] }
   ].sort((a, b) => {
     if (tIdx(a.cls) !== tIdx(b.cls)) return tIdx(a.cls) - tIdx(b.cls);
@@ -683,7 +682,6 @@ function buildClassesDex() {
     insnInvoke(0x6e, 2, mIdx('Landroid/webkit/WebSettings;', 'setDatabaseEnabled'), [2, 0]),
     insnInvoke(0x6e, 2, mIdx('Landroid/webkit/WebSettings;', 'setAllowFileAccess'), [2, 0]),
     insnInvoke(0x6e, 2, mIdx('Landroid/webkit/WebSettings;', 'setAllowContentAccess'), [2, 0]),
-    insnInvoke(0x6e, 2, mIdx('Landroid/webkit/WebSettings;', 'setAllowFileAccessFromFileURLs'), [2, 0]),
     insnInvoke(0x6e, 2, mIdx('Landroid/webkit/WebSettings;', 'setMediaPlaybackRequiresUserGesture'), [2, 3]),
     Buffer.from([0x22, 0x02, tIdx('Landroid/webkit/WebChromeClient;') & 0xff, (tIdx('Landroid/webkit/WebChromeClient;') >> 8) & 0xff]),
     insnInvoke(0x70, 1, mIdx('Landroid/webkit/WebChromeClient;', '<init>'), [2]),
@@ -778,8 +776,8 @@ function buildClassesDex() {
   }
 
   const classDataOff = cursor;
-  const directMethodIdx = mIdx('Lcom/cutefishaep/ofts/MainActivity;', '<init>');
-  const virtualMethodIdx = mIdx('Lcom/cutefishaep/ofts/MainActivity;', 'onCreate');
+  const directMethodIdx = mIdx('Lcom/cutefish/studio/MainActivity;', '<init>');
+  const virtualMethodIdx = mIdx('Lcom/cutefish/studio/MainActivity;', 'onCreate');
   const classDataBuf = Buffer.concat([
     uleb128(0),
     uleb128(0),
@@ -860,7 +858,7 @@ function buildClassesDex() {
     dex.writeUInt32LE(sIdx(m.name), o + 4);
   });
 
-  dex.writeUInt32LE(tIdx('Lcom/cutefishaep/ofts/MainActivity;'), classDefsOff);
+  dex.writeUInt32LE(tIdx('Lcom/cutefish/studio/MainActivity;'), classDefsOff);
   dex.writeUInt32LE(0x0001, classDefsOff + 4);
   dex.writeUInt32LE(tIdx('Landroid/app/Activity;'), classDefsOff + 8);
   dex.writeUInt32LE(0, classDefsOff + 12);
@@ -881,6 +879,87 @@ function buildClassesDex() {
   dex.writeUInt32LE(adler32(dex.subarray(12)), 8);
 
   return dex;
+}
+
+function getClassesDex(tmpDir) {
+  const cachedDexPath = path.join(EXP_ROOT, 'android', 'classes.dex');
+  const javaFile = path.join(EXP_ROOT, 'android/app/src/main/java/com/cutefish/studio/MainActivity.java');
+
+  if (fs.existsSync(javaFile)) {
+    try {
+      const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || path.join(process.env.HOME || '', 'Library/Android/sdk');
+      let androidJar = null;
+      let d8Bin = null;
+
+      if (androidHome && fs.existsSync(androidHome)) {
+        const platformsDir = path.join(androidHome, 'platforms');
+        if (fs.existsSync(platformsDir)) {
+          const plats = fs.readdirSync(platformsDir).filter((p) => fs.existsSync(path.join(platformsDir, p, 'android.jar'))).sort().reverse();
+          if (plats.length > 0) {
+            androidJar = path.join(platformsDir, plats[0], 'android.jar');
+          }
+        }
+        const buildToolsDir = path.join(androidHome, 'build-tools');
+        if (fs.existsSync(buildToolsDir)) {
+          const bts = fs.readdirSync(buildToolsDir).filter((b) => fs.existsSync(path.join(buildToolsDir, b, 'd8'))).sort().reverse();
+          if (bts.length > 0) {
+            d8Bin = path.join(buildToolsDir, bts[0], 'd8');
+          }
+        }
+      }
+
+      if (!d8Bin) {
+        try {
+          const whichD8 = execSync('which d8', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+          if (whichD8) d8Bin = whichD8;
+        } catch (_) {}
+      }
+
+      if (androidJar && d8Bin) {
+        console.log(`[Android Build] Compiling Java source with ${androidJar} & ${d8Bin}...`);
+        const buildClassesDir = path.join(tmpDir, 'javac-classes');
+        const buildDexDir = path.join(tmpDir, 'd8-dex');
+        fs.mkdirSync(buildClassesDir, { recursive: true });
+        fs.mkdirSync(buildDexDir, { recursive: true });
+
+        execSync(`javac -cp "${androidJar}" -d "${buildClassesDir}" "${javaFile}"`, { stdio: 'inherit' });
+
+        const classFiles = [];
+        const findClasses = (dir) => {
+          for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+            const p = path.join(dir, ent.name);
+            if (ent.isDirectory()) findClasses(p);
+            else if (ent.name.endsWith('.class')) classFiles.push(p);
+          }
+        };
+        findClasses(buildClassesDir);
+
+        if (classFiles.length > 0) {
+          const classArgs = classFiles.map((c) => `"${c}"`).join(' ');
+          execSync(`"${d8Bin}" --min-api 26 ${classArgs} --output "${buildDexDir}"`, { stdio: 'inherit' });
+          const generatedDex = path.join(buildDexDir, 'classes.dex');
+          if (fs.existsSync(generatedDex)) {
+            console.log('[Android Build] Successfully compiled MainActivity.java into classes.dex with WebChromeClient file chooser!');
+            const dexData = fs.readFileSync(generatedDex);
+            try {
+              fs.writeFileSync(cachedDexPath, dexData);
+            } catch (_) {}
+            return dexData;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Android Build] Java/d8 compilation skipped:', err.message);
+    }
+  }
+
+  if (fs.existsSync(cachedDexPath)) {
+    console.log('[Android Build] Using cached android/classes.dex');
+    return fs.readFileSync(cachedDexPath);
+  }
+
+  console.log('[Android Build] Using built-in Play-Protect-clean Dalvik DEX generator');
+  return buildClassesDex();
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,7 +1117,7 @@ function buildAndroidApk() {
   const versionCode = (verParts[0] || 1) * 100 + (verParts[1] || 0) * 10 + (verParts[2] || 0);
   const axmlBuf = buildBinaryAndroidManifest(versionCode, manifest.version);
   const arscBuf = buildResourcesArsc();
-  const dexBuf = buildClassesDex();
+  const dexBuf = getClassesDex(tmpDir);
   const iconBuf = fs.readFileSync(path.join(EXP_ROOT, 'icons/icon.png'));
 
   const rawFiles = [
@@ -1072,7 +1151,7 @@ function buildAndroidApk() {
   // Build JAR v1 META-INF/MANIFEST.MF, CERT.SF, CERT.RSA (with X-Android-APK-Signed: 2, 3 header!)
   const mfLines = [
     'Manifest-Version: 1.0',
-    'Built-By: Cutefish AEP',
+    'Built-By: CuteFish Studio',
     'Created-By: Android Gradle 8.5.0',
     ''
   ];

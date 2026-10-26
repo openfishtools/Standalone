@@ -1,9 +1,9 @@
 {
   "name": "FishToolsStudio",
   "displayName": "FishTools Studio",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "studioVersion": "0.6.5",
-  "bundleId": "com.cutefishaep.ofts",
+  "bundleId": "com.cutefish.studio",
   "scheme": "fishtools",
   "officialUrl": "https://studio.cutefish.my.id",
   "updateEndpoint": "https://studio.cutefish.my.id/version.json"

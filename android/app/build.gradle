@@ -10,10 +10,10 @@ react {
 android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
-    namespace "com.cutefishaep.ofts"
+    namespace "com.cutefish.studio"
 
     defaultConfig {
-        applicationId "com.cutefishaep.ofts"
+        applicationId "com.cutefish.studio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 10100

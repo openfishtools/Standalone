@@ -7,8 +7,8 @@
   IgnorableNamespaces="uap mp rescap">
 
   <Identity
-    Name="OpenFishTools.FishToolsStudio"
-    Publisher="CN=OpenFishTools, O=OpenFishTools, L=Jakarta, C=ID"
+    Name="CuteFish.Studio"
+    Publisher="CN=CuteFish Studio, O=CuteFish, L=Jakarta, C=ID"
     Version="1.1.0.0" />
 
   <Properties>

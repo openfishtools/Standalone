@@ -7,9 +7,9 @@ prompt = no
 C = ID
 ST = DKI Jakarta
 L = Jakarta
-O = OpenFishTools Foundation
-OU = Desktop and Mobile Engineering
-CN = OpenFishTools Studio Official Release
+O = CuteFish Studio
+OU = Mobile Studio Engineering
+CN = CuteFish Studio
 
 [v3_codesign]
 basicConstraints = critical,CA:FALSE

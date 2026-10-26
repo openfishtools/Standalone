@@ -39,6 +39,15 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Ensure lld-link is available for Windows cross-compilation
         run: |
           if ! find "$HOME/.rustup/toolchains" -name "lld-link" 2>/dev/null | grep -q "lld-link"; then
