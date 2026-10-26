@@ -1,7 +1,7 @@
 {
   "name": "FishToolsStudio",
   "displayName": "FishTools Studio",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "studioVersion": "0.6.5",
   "bundleId": "com.cutefish.studio",
   "scheme": "fishtools",

@@ -1,6 +1,6 @@
 {
   "name": "fishtools-studio-standalone",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "description": "Multiplatform React Native Standalone App for FishTools Studio with Full GPU Acceleration (macOS Universal, Windows, Android) and Dynamic OTA Updates",
   "main": "index.js",

@@ -21,8 +21,8 @@ const EXP_ROOT = path.resolve(__dirname, '..');
 const CERT_DIR = path.join(EXP_ROOT, 'certs');
 const OUT_DIR = path.join(EXP_ROOT, 'dist-android');
 
-const MIN_SDK = 26;
-const TARGET_SDK = 33;
+const MIN_SDK = 29;
+const TARGET_SDK = 34;
 const MAX_SDK = 0x7fffffff;
 
 function ensurePersistentSigningCert() {
@@ -919,33 +919,38 @@ function getClassesDex(tmpDir) {
         console.log(`[Android Build] Compiling Java source with ${androidJar} & ${d8Bin}...`);
         const buildClassesDir = path.join(tmpDir, 'javac-classes');
         const buildDexDir = path.join(tmpDir, 'd8-dex');
+        fs.rmSync(buildClassesDir, { recursive: true, force: true });
+        fs.rmSync(buildDexDir, { recursive: true, force: true });
         fs.mkdirSync(buildClassesDir, { recursive: true });
         fs.mkdirSync(buildDexDir, { recursive: true });
 
-        execSync(`javac -cp "${androidJar}" -d "${buildClassesDir}" "${javaFile}"`, { stdio: 'inherit' });
-
-        const classFiles = [];
-        const findClasses = (dir) => {
+        const javaSrcDir = path.join(EXP_ROOT, 'android/app/src/main/java');
+        const javaFiles = [];
+        const findJava = (dir) => {
           for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
             const p = path.join(dir, ent.name);
-            if (ent.isDirectory()) findClasses(p);
-            else if (ent.name.endsWith('.class')) classFiles.push(p);
+            if (ent.isDirectory()) findJava(p);
+            else if (ent.name.endsWith('.java')) javaFiles.push(p);
           }
         };
-        findClasses(buildClassesDir);
+        findJava(javaSrcDir);
 
-        if (classFiles.length > 0) {
-          const classArgs = classFiles.map((c) => `"${c}"`).join(' ');
-          execSync(`"${d8Bin}" --min-api 26 ${classArgs} --output "${buildDexDir}"`, { stdio: 'inherit' });
-          const generatedDex = path.join(buildDexDir, 'classes.dex');
-          if (fs.existsSync(generatedDex)) {
-            console.log('[Android Build] Successfully compiled MainActivity.java into classes.dex with WebChromeClient file chooser!');
-            const dexData = fs.readFileSync(generatedDex);
-            try {
-              fs.writeFileSync(cachedDexPath, dexData);
-            } catch (_) {}
-            return dexData;
-          }
+        const javaArgs = javaFiles.map((f) => `"${f}"`).join(' ');
+        execSync(`javac -cp "${androidJar}" -d "${buildClassesDir}" ${javaArgs}`, { stdio: 'inherit' });
+
+        const jarFile = path.join(tmpDir, 'app-classes.jar');
+        const jarBin = fs.existsSync('/usr/bin/jar') ? '/usr/bin/jar' : 'jar';
+        execSync(`"${jarBin}" cf "${jarFile}" -C "${buildClassesDir}" .`, { stdio: 'inherit' });
+
+        execSync(`"${d8Bin}" --min-api ${MIN_SDK} "${jarFile}" --output "${buildDexDir}"`, { stdio: 'inherit' });
+        const generatedDex = path.join(buildDexDir, 'classes.dex');
+        if (fs.existsSync(generatedDex)) {
+          console.log('[Android Build] Successfully compiled MainActivity.java into classes.dex with WebChromeClient file chooser & OTA updater!');
+          const dexData = fs.readFileSync(generatedDex);
+          try {
+            fs.writeFileSync(cachedDexPath, dexData);
+          } catch (_) {}
+          return dexData;
         }
       }
     } catch (err) {
@@ -1147,6 +1152,11 @@ function buildAndroidApk() {
     }
   }
   walkShell(path.join(EXP_ROOT, 'shell'), 'assets/shell');
+  const studioAssetsDir = path.join(EXP_ROOT, 'android/app/src/main/assets/studio');
+  if (fs.existsSync(studioAssetsDir)) {
+    console.log('[Android Build] Bundling complete Studio assets into APK for 100% offline access...');
+    walkShell(studioAssetsDir, 'assets/studio');
+  }
 
   // Build JAR v1 META-INF/MANIFEST.MF, CERT.SF, CERT.RSA (with X-Android-APK-Signed: 2, 3 header!)
   const mfLines = [

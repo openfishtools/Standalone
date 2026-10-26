@@ -8,10 +8,11 @@
 html, body {
   width: 100%;
   height: 100%;
-  background-color: var(--bg-canvas);
-  color: var(--text-primary);
-  font-family: 'Cal Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
+  user-select: none;
 }
 
 .splash-root {
@@ -20,41 +21,43 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-canvas);
+  background-color: #000000;
 }
 
 .splash-box {
-  width: 240px;
+  width: 260px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
 }
 
-.splash-icon {
-  width: 64px;
-  height: 64px;
-  display: block;
+.splash-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+  text-align: center;
 }
 
 .progress-track {
   width: 100%;
-  height: 4px;
-  background-color: var(--bg-panel);
-  border-radius: 999px;
+  height: 3px;
+  background-color: #222222;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .progress-fill {
   width: 0%;
   height: 100%;
-  background-color: var(--color-primary);
+  background-color: #ffffff;
   transition: width 0.15s ease-out;
 }
 
 .splash-log {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: #888888;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;

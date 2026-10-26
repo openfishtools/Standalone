@@ -1,9 +1,9 @@
 {
   "name": "FishTools Studio",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "studioVersion": "0.6.5",
-  "timestamp": 1793005351848,
-  "generatedAt": "2026-10-26T09:02:31.848Z",
+  "timestamp": 1793009134695,
+  "generatedAt": "2026-10-26T10:05:34.695Z",
   "files": {
     "index.html": {
       "size": 264508,
@@ -38,8 +38,8 @@
       "sha256": "438a9bb806fdce5cb87da10df7f5a3a077dad3b0e6dc2fc764cdc1d202558483"
     },
     "js/app/main.js": {
-      "size": 115537,
-      "sha256": "ae22ebe2951ff688bf71a6bd37d36e1f03b48339a0bb246a3cc46ecd05537f10"
+      "size": 116962,
+      "sha256": "1de79bf5b42556247d41bac9953ca67cfb2623d1b0b3a45169bb0ba1044f6f28"
     },
     "js/app/pwa-install.js": {
       "size": 2563,
@@ -162,8 +162,8 @@
       "sha256": "bc197ee2638001513852f5fb74b50eebd9847e8cf99f4f94201130bc21247d4e"
     },
     "js/media/preview-cache.js": {
-      "size": 67254,
-      "sha256": "2d6a76bfdbdb0a5d71dfe4c0caa7eb0931039cf0b8de9340bb2db6a742e7346b"
+      "size": 68231,
+      "sha256": "1d594f785ef67d6689ec8eba1dab1fc354b5bc6fc6b3a349e209de6eedcd2c92"
     },
     "js/media/video-decoder-worker.js": {
       "size": 19139,
