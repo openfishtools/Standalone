@@ -1785,4 +1785,4 @@ if (require.main === module) {
   buildFirefoxWindowsExe();
 }
 
-module.exports = { buildFirefoxWindowsExe };
+module.exports = { buildFirefoxWindowsExe, buildWindows: buildFirefoxWindowsExe };

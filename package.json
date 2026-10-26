@@ -1,13 +1,43 @@
 {
   "name": "fishtools-studio-standalone",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": true,
-  "description": "Standalone build scripts for FishTools Studio (macOS, Windows, Android)",
+  "description": "Multiplatform React Native Standalone App for FishTools Studio with Full GPU Acceleration (macOS Universal, Windows, Android) and Dynamic OTA Updates",
+  "main": "index.js",
   "scripts": {
-    "manifest": "node scripts/generate-manifest.js",
-    "build:mac": "node scripts/build-mac.js",
-    "build:win": "node scripts/build-win.js",
-    "build:android": "node scripts/build-android.js",
-    "build": "node scripts/build-mac.js && node scripts/build-win.js && node scripts/build-android.js"
-  }
+    "sync:studio": "node scripts/sync-studio.js",
+    "start": "react-native start",
+    "start:macos": "react-native run-macos",
+    "start:windows": "react-native run-windows",
+    "start:android": "react-native run-android",
+    "build:mac": "node scripts/sync-studio.js && node scripts/build-mac.js",
+    "build:mac:universal": "node scripts/sync-studio.js && node scripts/build-mac.js --universal",
+    "build:win": "node scripts/sync-studio.js && node scripts/build-win.js",
+    "build:android": "node scripts/sync-studio.js && node scripts/build-android.js",
+    "build:all": "node scripts/build-all.js",
+    "build": "node scripts/build-all.js",
+    "ota:package": "node scripts/generate-ota.js"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-macos": "0.74.5",
+    "react-native-windows": "0.74.5",
+    "react-native-webview": "^13.8.7",
+    "@react-native-async-storage/async-storage": "^1.23.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/runtime": "^7.24.0",
+    "@react-native/babel-preset": "^0.74.83",
+    "@react-native/metro-config": "^0.74.83",
+    "metro-react-native-babel-preset": "^0.77.0",
+    "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openfishtools/Standalone.git"
+  },
+  "author": "OpenFishTools Team",
+  "license": "AGPL-3.0-or-later"
 }

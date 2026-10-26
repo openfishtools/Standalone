@@ -5,8 +5,9 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - 'v*'
       - '*.*.*'
+      - '[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
 permissions:
@@ -44,14 +45,14 @@ jobs:
             rustup toolchain install stable --profile minimal
           fi
 
-      - name: Resolve version and latest tag
+      - name: Resolve version and tag
         id: version
         run: |
-          PKG_VER=$(node -p "require('./package.json').version || '1.0.0'")
+          PKG_VER=$(node -p "require('./package.json').version || '1.1.0'")
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             RAW_TAG="${GITHUB_REF_NAME}"
             VERSION="${RAW_TAG#v}"
-            TAG="v${VERSION}"
+            TAG="${RAW_TAG}"
           else
             LATEST_TAG=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n 1)
             if [ -n "$LATEST_TAG" ]; then
@@ -74,9 +75,10 @@ jobs:
           echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION (tag: $TAG)"
 
-      - name: Build macOS, Windows, and Android standalone packages
+      - name: Build macOS, Windows, Android, and Dynamic OTA packages
         env:
           APP_VERSION: ${{ steps.version.outputs.VERSION }}
+          STUDIO_DIR: ${{ github.workspace }}/.cache/Studio
         run: |
           npm run build
           mkdir -p release-assets
@@ -84,26 +86,31 @@ jobs:
           cp "dist-win/FishTools_Studio_${APP_VERSION}_Windows_x64_Setup.exe" release-assets/
           cp "dist-win/FishTools_Studio_${APP_VERSION}_Windows_x64_Portable.zip" release-assets/
           cp "dist-android/FishTools_Studio_${APP_VERSION}_Android.apk" release-assets/
+          cp "dist-ota/FishTools_Studio_OTA_v${APP_VERSION}.zip" release-assets/
           ls -lh release-assets/
 
       - name: Generate release notes
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
+          TAG="${{ steps.version.outputs.TAG }}"
           cat > release_notes.md << EOF
-          FishTools Studio v${VERSION} standalone build for macOS, Windows, and Android.
+          # FishTools Studio ${TAG}
 
-          ### Files
-          - \`FishTools_Studio_${VERSION}_macOS_Universal.dmg\` — macOS Universal installer
-          - \`FishTools_Studio_${VERSION}_Windows_x64_Setup.exe\` — Windows x64 installer
-          - \`FishTools_Studio_${VERSION}_Windows_x64_Portable.zip\` — Windows x64 portable archive
-          - \`FishTools_Studio_${VERSION}_Android.apk\` — Android package (\`com.cutefishaep.ofts\`)
+          Official multiplatform standalone build of **FishTools Studio** with full GPU hardware acceleration and dynamic updates.
+
+          ### Platforms & Artifacts
+          - **macOS Universal**: \`FishTools_Studio_${VERSION}_macOS_Universal.dmg\` (Apple Silicon \`arm64\` + Intel \`x86_64\` with Metal acceleration)
+          - **Windows x64 Setup**: \`FishTools_Studio_${VERSION}_Windows_x64_Setup.exe\` (DirectX 12 hardware acceleration)
+          - **Windows x64 Portable**: \`FishTools_Studio_${VERSION}_Windows_x64_Portable.zip\`
+          - **Android Signed APK**: \`FishTools_Studio_${VERSION}_Android.apk\` (v1 + v2 + v3 scheme signatures, hardware accelerated)
+          - **Dynamic OTA Update**: \`FishTools_Studio_OTA_v${VERSION}.zip\` (Over-The-Air dynamic update package)
           EOF
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
-          name: "FishTools Studio v${{ steps.version.outputs.VERSION }}"
+          name: "FishTools Studio ${{ steps.version.outputs.TAG }}"
           body_path: release_notes.md
           files: release-assets/*
           draft: false

@@ -1,11 +1,61 @@
+# Dependencies
 node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
 dist-mac/
 dist-win/
 dist-android/
-dist/
+dist-ota/
+build/
+*.dmg
+*.exe
+*.apk
+*.aab
+*.msix
+
+# React Native & Metro
+.metro-health-check*
+*.bundle
+*.jsbundle
+
+# macOS / iOS
+macos/Pods/
+macos/build/
+macos/DerivedData/
+*.xcworkspace
+xcuserdata/
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Windows
+windows/build/
+windows/packages/
+windows/.vs/
+windows/ARM/
+windows/ARM64/
+windows/x64/
+windows/x86/
+windows/Debug/
+windows/Release/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore.auto
+
+# Synced Local Assets (temporary staging during packaging)
+src/assets/studio/
+!src/assets/studio/.gitkeep
+src/assets/studio-cache/
+android/app/src/main/assets/studio/
+macos/FishToolsStudio/studio/
+windows/FishToolsStudio/studio/
 .cache/
-.tmp-build/
-shell/studio/
-shell/manifest.json
 .DS_Store
-*.log
+Thumbs.db

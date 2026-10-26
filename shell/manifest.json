@@ -1,0 +1,1961 @@
+{
+  "name": "FishTools Studio",
+  "version": "1.1.0",
+  "studioVersion": "0.6.5",
+  "timestamp": 1793000948636,
+  "generatedAt": "2026-10-26T07:49:08.636Z",
+  "files": {
+    "index.html": {
+      "size": 264421,
+      "sha256": "53bb96292b5e970f118c05095d3991ea62403f1370175f1eeeff362cbeb32854"
+    },
+    "desktop.html": {
+      "size": 476216,
+      "sha256": "64dc074aeffe9624ea27053e8e9a7d370a2f21253912043a84f2f7eceadd6843"
+    },
+    "editor.html": {
+      "size": 456282,
+      "sha256": "f6efe1006844c429903bd97e6da049b21f48606c2ff087d5268038c2627442a0"
+    },
+    "privacy.html": {
+      "size": 7481,
+      "sha256": "d4b24f8abc417a72b03f821d8495df0071770c102b40a4768fffcee41bb57666"
+    },
+    "terms.html": {
+      "size": 6535,
+      "sha256": "5b881f848b0bbe71c37a937b4ae377f57a60a168ec8e3580e3bbe125acd2b3a3"
+    },
+    "version.json": {
+      "size": 25,
+      "sha256": "675483f4a913928ac23ae8a67b31959d0316874843c12f8cf346f852c7139aaf"
+    },
+    "manifest.webmanifest": {
+      "size": 784,
+      "sha256": "86c2ed03da4f2a287df739314a6ef8a02633aa1d94de43851d930c9573674230"
+    },
+    "js/app/desktop.js": {
+      "size": 185123,
+      "sha256": "438a9bb806fdce5cb87da10df7f5a3a077dad3b0e6dc2fc764cdc1d202558483"
+    },
+    "js/app/main.js": {
+      "size": 115498,
+      "sha256": "a5a31d3404e77422a5f0d87967465d5908a3b549b2e9078f21524972da199e81"
+    },
+    "js/app/pwa-install.js": {
+      "size": 2563,
+      "sha256": "ff96919320ed0f74b2b613a7a47df1961efca17ccbf1114ca2727bcf36b8e53f"
+    },
+    "js/app/template-editor.js": {
+      "size": 64760,
+      "sha256": "f86d957b39e2b84cb44f20cf2f4fc1aa0643471c5e27315d6b77bbc725ebfa38"
+    },
+    "js/core/canvas-overlay.js": {
+      "size": 31527,
+      "sha256": "c1f04fea4954f6659ba1e707db6e1b8e7621cec6bc9a0338f28c5578f5a6cb04"
+    },
+    "js/core/fishtool-engine.js": {
+      "size": 166310,
+      "sha256": "efdd965c5fd57df7b5325e8a81f286c45370e5193fb2a6ac478a7fe9e4be4442"
+    },
+    "js/core/motion-blur-engine.js": {
+      "size": 53024,
+      "sha256": "942a9f513d3a155dccf13d157a1e15d997b5b67cb64ba5a26c2fcff51444f18d"
+    },
+    "js/core/text-engine.js": {
+      "size": 43613,
+      "sha256": "d5c0bb9859ce2c5a5de78a71632224b18c1fd67a2adcfb33410ba1a90a3bf1ee"
+    },
+    "js/core/wireframe.js": {
+      "size": 41852,
+      "sha256": "8e632d6c9045f64d5cb7e009735313d6e956fe46a402f706a25fa834db9e02a7"
+    },
+    "js/editor/editor-animation.js": {
+      "size": 201195,
+      "sha256": "aa7f0a6bd31b6738d1155cbcf333bc32c2a43d7c20c99f9bf14cb9ad86ee4bba"
+    },
+    "js/editor/editor-canvas.js": {
+      "size": 238973,
+      "sha256": "a0c35ebd9ac50ff3ee26380fbecbfa738949a833d7e9a6a80b6078ab437e32e8"
+    },
+    "js/editor/editor-effects.js": {
+      "size": 157987,
+      "sha256": "ad7646f0d88bb461123f67542244d4e8cfdf6fb8d61bb321494c501713d124b8"
+    },
+    "js/editor/editor-export.js": {
+      "size": 140036,
+      "sha256": "076971831ae3f7aabb99483a2c3a1927b0e2b327007ce543ae8c91ceb5a4ccee"
+    },
+    "js/editor/editor-extension-bridge.js": {
+      "size": 94239,
+      "sha256": "cd81082f6befee3171886193b1611da5ca20d4285344052c1ccb61b9c1483803"
+    },
+    "js/editor/editor-inspector.js": {
+      "size": 228731,
+      "sha256": "9be79ad7451d378154d99b22ffcd557660451b7625fd43c522c32a9a7e31f58a"
+    },
+    "js/editor/editor-layers.js": {
+      "size": 247777,
+      "sha256": "8e0aa65932d5f6767d1a00990cccad6bfcfabd96ae66b01f8d02caa5856bea40"
+    },
+    "js/editor/editor-media.js": {
+      "size": 169250,
+      "sha256": "16ff04020950de818383db118169ac5dedface019c0513360ceb4cbce837bb05"
+    },
+    "js/editor/editor-state.js": {
+      "size": 166930,
+      "sha256": "9d941de1974749e0e40703fc5813a4d2703f342044e1e430b39abd6a5d21f5ef"
+    },
+    "js/editor/editor-timeline-core.js": {
+      "size": 201942,
+      "sha256": "19e8e5205dee56a80f8784927c435c6cdcb40258d2f7bf087abd07e9f6230946"
+    },
+    "js/editor/editor-timeline-ops.js": {
+      "size": 386077,
+      "sha256": "9344484ace30c566266a0decea3c28aa6d1a1e864ba2069a7060fa68f5642697"
+    },
+    "js/editor.js": {
+      "size": 2026,
+      "sha256": "4d843fb0d1296c48b7b0150528d06f99248e2b75fa99f0af24e4e4cee70da963"
+    },
+    "js/extensions/JSX-Translator.js": {
+      "size": 95159,
+      "sha256": "a7a71224a1a11b5ec39852bd5250ea2889a55075b483a7c3ceb95e94f1d0af9a"
+    },
+    "js/extensions/attributes-clipboard.js": {
+      "size": 57100,
+      "sha256": "641e8796c9c70cda02e20f577984b5ba24b2b1c0303aec02243f3952d6cd6ffa"
+    },
+    "js/extensions/extension-manager.js": {
+      "size": 34176,
+      "sha256": "eb616cb02a7473ae75d06073f75f725d5b5c1abe24a548dd5b8d34ae9d4d229a"
+    },
+    "js/extensions/extensions.js": {
+      "size": 16756,
+      "sha256": "0ab714fa3272cbbd009590555f0c4c75486fefadef118fc1be79dc0c04db48ee"
+    },
+    "js/extensions/fishtools-adapter.js": {
+      "size": 75944,
+      "sha256": "90a258c684146c6ea0910da4d9a44325d7a5586a30fdf4438e82ff1c99c18d20"
+    },
+    "js/extensions/openfishtools-controller.js": {
+      "size": 126198,
+      "sha256": "31279779eb16fd53432454e6c73082881e96c90e60ce62b78595c152fd35355f"
+    },
+    "js/extensions/openfishtools-generators3d.js": {
+      "size": 55906,
+      "sha256": "8e6b4c1100c82030a3d47a9d6000fd542bbfccb95fa8b30eb42a23e55d0534c3"
+    },
+    "js/media/bg-removal-engine.js": {
+      "size": 42020,
+      "sha256": "4433d99069786df717554fed8e835f4eda991248aedea93ef409774f7c35e1e7"
+    },
+    "js/media/fish-audio-engine.js": {
+      "size": 40168,
+      "sha256": "19e7a14066693423f81fbf4964d8c47c1f177d38dba42c4ea41b6933b061bb4d"
+    },
+    "js/media/fish-export-engine.js": {
+      "size": 92020,
+      "sha256": "672b9cddd47bc5ccc8f44217d09f159adf794939c20b9f840b7afd0b3f29dd66"
+    },
+    "js/media/frame-extractor.js": {
+      "size": 169175,
+      "sha256": "bc197ee2638001513852f5fb74b50eebd9847e8cf99f4f94201130bc21247d4e"
+    },
+    "js/media/preview-cache.js": {
+      "size": 67254,
+      "sha256": "2d6a76bfdbdb0a5d71dfe4c0caa7eb0931039cf0b8de9340bb2db6a742e7346b"
+    },
+    "js/media/video-decoder-worker.js": {
+      "size": 19139,
+      "sha256": "cd0152328fb9231d2fe1f03dd6812ab47f0670971a4f18b0077b71e716be5220"
+    },
+    "js/media/video-stream-manager.js": {
+      "size": 9823,
+      "sha256": "409707202e65c66181f37dd3235719cfadee702dc092af12cdd8a99cbb495f64"
+    },
+    "js/media/videocomp-enggine.js": {
+      "size": 26741,
+      "sha256": "ab6b89ff6841eb901d4d333fd60e095cf0d25249f45ba15c609e9fc226901b64"
+    },
+    "js/plugins/effects.js": {
+      "size": 121749,
+      "sha256": "623cb3c52c69d62839119f89b98ef5f59def23b79e430820fe93e34a7fa1a2e9"
+    },
+    "js/plugins/shapes/capsule.js": {
+      "size": 2095,
+      "sha256": "b3e93168777c818a6b5bed23c8cb24ef649b1bacec445636965336f4528dac4b"
+    },
+    "js/plugins/shapes/circle.js": {
+      "size": 1053,
+      "sha256": "de6e7fd776b5ff4eaed14798566ecee8c8aca79048ee526691239a63a3e486b9"
+    },
+    "js/plugins/shapes/heart.js": {
+      "size": 1707,
+      "sha256": "c6355cbadf540f55f22c3984fd2c58c00d026f39afac21b5ac8b979d21c5459f"
+    },
+    "js/plugins/shapes/polygon.js": {
+      "size": 1471,
+      "sha256": "297dbcaea848841478680f9c8d9702a8c0999ba6a6ea56b9c5fa366ae74fcb7d"
+    },
+    "js/plugins/shapes/rectangle.js": {
+      "size": 2592,
+      "sha256": "e0d9b2e96423660f3cd20dfa79abc4cb24248555b51507aa9956fe219de5ec6e"
+    },
+    "js/plugins/shapes/star.js": {
+      "size": 1987,
+      "sha256": "dccbbff1e95cf50866280cf852403cf8d98173890b3276b32519acb37cb8540c"
+    },
+    "js/plugins/shapes/triangle.js": {
+      "size": 4044,
+      "sha256": "918e9d28a33a3898a299fe3463395fa5484dc3492861dcd3d5cb1d3e7871ce10"
+    },
+    "js/plugins/shapes/vector.js": {
+      "size": 19591,
+      "sha256": "2588251a5bc56c5d28ed2db25c6a99aee6ea987decb47c56ff165deef489f642"
+    },
+    "js/plugins/shapes.js": {
+      "size": 5746,
+      "sha256": "e94cb7ba22669328493e2fdf7785ba70df647e831318d0f62473a18dbf9cdf92"
+    },
+    "js/plugins/text/default.js": {
+      "size": 966,
+      "sha256": "123b4a742f71b5166a506aea28043a85ee429ea8610dcd907a7b76c89996c30e"
+    },
+    "js/storage/db.js": {
+      "size": 111231,
+      "sha256": "38442a5637ad692500b2c2210153ad5c90ef558833492a773e2f2be42390e74b"
+    },
+    "js/ui/color-picker.js": {
+      "size": 27745,
+      "sha256": "e5eae11977179faa2ebbfd0657168466fb6c032aae7c777207e68e987a0449a8"
+    },
+    "js/ui/context-menu.js": {
+      "size": 9512,
+      "sha256": "03d75e5cb12ef02063ba6126267e6e6d4c5e573ca68e81fa1928255c08b043e9"
+    },
+    "js/ui/drawer.js": {
+      "size": 24849,
+      "sha256": "1b7d70bb54ec9f8437fab91774d220aa09908c745c30b840826fe5510fd00dc9"
+    },
+    "js/ui/elements/card-builder.js": {
+      "size": 32095,
+      "sha256": "42327e736d0ad8087f6416341e1caae2f81dab47bd5df62a5d858d0d28de6c9e"
+    },
+    "js/ui/elements/color-input.js": {
+      "size": 4315,
+      "sha256": "e13542f063ff7a3821fb5bf6abef58f52cdf309d9fd502d5a9bfff55b7009f17"
+    },
+    "js/ui/elements/dropdown.js": {
+      "size": 15120,
+      "sha256": "2f9c486a0554870d097891f3a3f9fa8d47c94a23906a82aa9d8637559427d39f"
+    },
+    "js/ui/elements/index.js": {
+      "size": 2263,
+      "sha256": "de64d430d7fa28362d01d8079c12b54f72acc983b46a2603e6dadfb201550255"
+    },
+    "js/ui/elements/number-input.js": {
+      "size": 3903,
+      "sha256": "a90d4c530c55b46a0171723c2ee9e38bdae3b76851fb224c9a9edecf65514818"
+    },
+    "js/ui/elements/segmented.js": {
+      "size": 5155,
+      "sha256": "980278e31d6970a987dd915bfce773dcf56e9596052c1021102cbdd1d50186a5"
+    },
+    "js/ui/elements/slider.js": {
+      "size": 17512,
+      "sha256": "8abc76ed5fece3296c7535708eb637387c325d96e15c6010c2caf439953aa0ea"
+    },
+    "js/ui/folderanim.js": {
+      "size": 72482,
+      "sha256": "31d4aaafd4ffffe3f1bc1751fef0395986bf9ce410c41432ecceda9540575eec"
+    },
+    "js/ui/modal.js": {
+      "size": 2651,
+      "sha256": "7ba78c68e48829e8c9b6370bee941988834a28cfa0ab83e9c56dab1aefa949b2"
+    },
+    "js/ui/popover.js": {
+      "size": 17312,
+      "sha256": "36935fd41176c9f2738e149e2c8e685617e5def642de2a532b8b9cd5056da2af"
+    },
+    "js/ui/switch.js": {
+      "size": 3807,
+      "sha256": "a1729c6f73c0ad52c385772c2b96363594735e7256867b5cd683938fc9de0c9e"
+    },
+    "js/ui/sync-height.js": {
+      "size": 4238,
+      "sha256": "8e24e131a82f196fe8ba6c123fdbb957126a9502871667aab568c71313a667bb"
+    },
+    "css/components/color-picker.css": {
+      "size": 9223,
+      "sha256": "c5592e48f392e08403d939fedcd720f32792738ca06a22cf531c32dddf980164"
+    },
+    "css/components/context-menu.css": {
+      "size": 3749,
+      "sha256": "4fd9ea37af5c1244ecbd62b861bec24f6ad06e942e9c77c5e9028cfb1a34866b"
+    },
+    "css/components/drawer.css": {
+      "size": 72511,
+      "sha256": "a8e2fc3e2fe9b77b2a325598ef2c127de3223a1009d90bd385f0be915b93c4d2"
+    },
+    "css/components/modal.css": {
+      "size": 105277,
+      "sha256": "2fd873f85d5878e3c1da9d40534b19159eda11c42e6e5b0c42e1b611bf5c4f9a"
+    },
+    "css/components/popover.css": {
+      "size": 36515,
+      "sha256": "02f3d2f930deead90b5d4785c063e44114825953191fa34fcd12a2dbb2cceebb"
+    },
+    "css/components/segmented-button.css": {
+      "size": 3767,
+      "sha256": "4152ea9d84572b34be4f79b20396d6493d96bc09b118b7a57fe359624c546ea8"
+    },
+    "css/components/switch.css": {
+      "size": 5563,
+      "sha256": "f918857dd807d91e27fd5fcf1d2e4821e51167531325ae8ba36fd616c96bf9d0"
+    },
+    "css/fixes/safari.css": {
+      "size": 7392,
+      "sha256": "f2f55f1ff77d7c00b6447afd530fdb6567cc64d74c7476b818a178493ed0c89e"
+    },
+    "css/layout/desktop.css": {
+      "size": 242354,
+      "sha256": "e59508b618c1965a5ebf1442385c7507c935085054f3241b0f463fd41e6b657c"
+    },
+    "css/layout/editor.css": {
+      "size": 106030,
+      "sha256": "25fbd45174b4f0f265ca44554046dba32b13ee36bd0cd8b05c9b1b7f55871140"
+    },
+    "css/layout/layout.css": {
+      "size": 59952,
+      "sha256": "5287e80cc2ce27ae8c7066d46fe41b787ddf0103541ee1ed4306d8d56f52cfa7"
+    },
+    "css/panels/effects-rack.css": {
+      "size": 56670,
+      "sha256": "6e92ff080ebfe28195208e95613368fe509e775787d77a4a51310ed4a2f5eabd"
+    },
+    "css/panels/extensions.css": {
+      "size": 16550,
+      "sha256": "020dd6c73b819a39b7526b5f755d5651302fd3b81239d823db90fdb9b4d9e6a7"
+    },
+    "css/panels/template-editor.css": {
+      "size": 14677,
+      "sha256": "da4e093f2a8c00bce49dd89da83a2adb776a5b06adb7e7a78608e32ecbf9e618"
+    },
+    "css/panels/text-format.css": {
+      "size": 5177,
+      "sha256": "5df16f972796a3890955d9554d4ed0ff9ddc5b70fd88cc2e08f94f4636db538c"
+    },
+    "css/panels/transform-controller.css": {
+      "size": 80836,
+      "sha256": "672fda838327c720af274180f09f2d31dedd9d439b41141ef8371d744fe51af4"
+    },
+    "css/panels/wireframe.css": {
+      "size": 2423,
+      "sha256": "c1e7c53b48846aafa5191d1fc19dd598200cf58b9f227234b7469575deecd63d"
+    },
+    "css/tokens/theme.css": {
+      "size": 11888,
+      "sha256": "5dc7fcf7d6e9cdd62e15556d55f92173e07baf4d6b022a6b80446f261ae91f91"
+    },
+    "assets/FXPH.svg": {
+      "size": 839,
+      "sha256": "f5aae8c21a259e476b0bada29161b82d8bc468d4dad96ab31d1500186e908b6e"
+    },
+    "assets/FXWipeJaws.webp": {
+      "size": 1328,
+      "sha256": "ca321d7ac9bc2b64fca0d0de0171f96bfbbbbcea646b40e741c2478814a9032f"
+    },
+    "assets/Shape/bintang.svg": {
+      "size": 194,
+      "sha256": "d4dccd2a25712a1137e3864eabf1186091622e044a170e96fd0c0c9a168894ff"
+    },
+    "assets/Shape/hati.svg": {
+      "size": 276,
+      "sha256": "d6f4a470630288a25d610ab4d6614a3ce67fc8755fab2d46b321b806f7c65b58"
+    },
+    "assets/Shape/kapsul.svg": {
+      "size": 139,
+      "sha256": "7445576d5684f0c3cf5697de651ebe751e5f5ab7f65ef2eee2e11f4c74403d3e"
+    },
+    "assets/Shape/kotak.svg": {
+      "size": 135,
+      "sha256": "024ff1512943a472015b2ff4b72c94d2c464ff80fda453d2f53ba9167c7574dc"
+    },
+    "assets/Shape/lingkaran.svg": {
+      "size": 119,
+      "sha256": "9e7ea109b2ae941d16a796a99cd9bdc997f84061a9d677400ba8570d4823e982"
+    },
+    "assets/Shape/poligon.svg": {
+      "size": 147,
+      "sha256": "6b08822f60c81286ef135a6ddf16fa88b6d171ab9a099455daf009e91f9f802d"
+    },
+    "assets/Shape/segitiga.svg": {
+      "size": 171,
+      "sha256": "a7ed2f973fc52c808b2b873729f2abf7b175c8cfa90faa0abeb66715a3320fe3"
+    },
+    "assets/checkerboard.svg": {
+      "size": 243,
+      "sha256": "158cad39847fb04667b370cebf7e490ca428a1473ec90d3a633ad84c492b95bd"
+    },
+    "assets/doodles.svg": {
+      "size": 81096,
+      "sha256": "cf488bb37131cd99e6cd28b86ea83d9f28f285b421f8b9edbba4deb13ee74039"
+    },
+    "assets/effects/categories/3d.png": {
+      "size": 23923,
+      "sha256": "f939ddd616b8820eaca4bdf0fd09d288e101f54adff7e4b7deb493abe5757d59"
+    },
+    "assets/effects/categories/artificial-intelligence.png": {
+      "size": 29536,
+      "sha256": "d1722a3a0ee39d1dd53731cd031b1cb333b0b9cc9e3e6bdd89fa64332cab98d8"
+    },
+    "assets/effects/categories/background.png": {
+      "size": 8901,
+      "sha256": "a5650a405d8eaa9b7e6e79cc96b10a9615d3e612688c4de25e2f17f9a0369409"
+    },
+    "assets/effects/categories/expression.png": {
+      "size": 27412,
+      "sha256": "34b184549548839f516ea11c43c77490409d1746f3a8a9a29580d23fcba64aea"
+    },
+    "assets/effects/categories/layer.png": {
+      "size": 21628,
+      "sha256": "02cbf31987e69b03893b9527aa35fecc5bf8014752d4a7e74b728c9f27ab03fd"
+    },
+    "assets/effects/categories/lightning.png": {
+      "size": 32878,
+      "sha256": "798168dce5bf75e46eaadc9b2619e683340dfed947983b1b9fea9e1515fce181"
+    },
+    "assets/effects/categories/movement.png": {
+      "size": 30990,
+      "sha256": "68e0acd8204f7e78cd645b2abc1a52148a7edaff1ac261ff112e19d8364b7b91"
+    },
+    "assets/effects/categories/warp.png": {
+      "size": 33951,
+      "sha256": "75227cad7c7b442525ca18a0e37d833eed36455d35f8c971e3c6484d34752488"
+    },
+    "assets/effects/categories/wipe.png": {
+      "size": 11885,
+      "sha256": "dc1d7d0708ea701b9f2c858cb6245f5a30d37f1bf8129c6b3e7664b9ce2bd436"
+    },
+    "assets/effects/thumbs/anamorphic-flare.png": {
+      "size": 26456,
+      "sha256": "cdc05162869dd5a595a8704123f7af975ef7e5493bed6530c9c49d1719652165"
+    },
+    "assets/effects/thumbs/angle-control.png": {
+      "size": 2215,
+      "sha256": "bad800575efe7e17166d83664123be58a361820f2225d92d90ec381c6b1a1af6"
+    },
+    "assets/effects/thumbs/bevel.png": {
+      "size": 20126,
+      "sha256": "95addd2d6382091fbcfe3506500e0141d5ecfcbdb3fb265eb8bf00a92ceb0faf"
+    },
+    "assets/effects/thumbs/box_3d.png": {
+      "size": 31834,
+      "sha256": "4510faa6106f207a756b763807100ed2b59b4372ea81b66c9a50a7c7518a87cc"
+    },
+    "assets/effects/thumbs/brightness-contrast.png": {
+      "size": 27645,
+      "sha256": "a205725cab6cbfd5728e02545ee6d1606c212c81f53042d4f38bc8f9efdbaa4d"
+    },
+    "assets/effects/thumbs/camera-lens-blur.png": {
+      "size": 18220,
+      "sha256": "16f71ee35e168b82579ecf6bf57be5c078f884416b11a97d700b2b2bbe06b5ae"
+    },
+    "assets/effects/thumbs/checkbox-control.png": {
+      "size": 2420,
+      "sha256": "c3a5fee02bee231e8c3b281d6b0cd83982649bcf5edf8025e8bfaf5a6388efae"
+    },
+    "assets/effects/thumbs/chromatic-aberration.png": {
+      "size": 28690,
+      "sha256": "2432fd70c8942dad3c4375791d63f9f13108581461bf708cc288874fc90be161"
+    },
+    "assets/effects/thumbs/color-balance.png": {
+      "size": 19135,
+      "sha256": "85cf5627bb68d1133f701fcee84b0a35e3bc6ff7fcd8befd13f4790aed82af33"
+    },
+    "assets/effects/thumbs/color-control.png": {
+      "size": 1668,
+      "sha256": "d8e2d5b8307256dbba9fd82e74d3f77f5ecc26fbd1422abd2830357d2bc66080"
+    },
+    "assets/effects/thumbs/color-temperature.png": {
+      "size": 26790,
+      "sha256": "21087ca77694e41edcdf938729017d8f6ac5b580be4bfdc7509e372f6dac3afb"
+    },
+    "assets/effects/thumbs/colorize.png": {
+      "size": 25113,
+      "sha256": "7186de904a6aedc313dea074c94c1fc2f4dea7bec5d389c4af69894b13cfc3b9"
+    },
+    "assets/effects/thumbs/curve.png": {
+      "size": 28287,
+      "sha256": "fc42a82f9ce6791b01e8a4108d7bfe65dd2e593b516d2671407b41fc9546cc05"
+    },
+    "assets/effects/thumbs/deep-glow.png": {
+      "size": 30625,
+      "sha256": "0cace154937f38676bf376d7aa67c72ae76e48a65742239e4845e9d29955c010"
+    },
+    "assets/effects/thumbs/diffusion.png": {
+      "size": 26079,
+      "sha256": "4d389cb50b46301fb1d573ff438c417a6886ff392b4ed9765064caf6ca9e228a"
+    },
+    "assets/effects/thumbs/drop-shadow.png": {
+      "size": 17228,
+      "sha256": "e515539403f9693d43dc57f26d2f34cb87ed5314ef6c63d410372b62e5a55cda"
+    },
+    "assets/effects/thumbs/dropdown-control.png": {
+      "size": 1736,
+      "sha256": "b599895ffb755b1fa9148b6269e3e106b8e9cd202d0cb5b31587d3ffc9ddb2bd"
+    },
+    "assets/effects/thumbs/exposure-gamma.png": {
+      "size": 26905,
+      "sha256": "34c82b05808f8bc530b34b384fd3aee15a181d7153c7a2a1de3b5c8cdb520fb2"
+    },
+    "assets/effects/thumbs/expression-controls.png": {
+      "size": 5289,
+      "sha256": "d51fa14efd336e414aab3c9784889c8dc14c248b07a977e00d822db5ff763c65"
+    },
+    "assets/effects/thumbs/extrude_3d.png": {
+      "size": 21230,
+      "sha256": "36f7a20d15702d30e5c582773f4575599e1c349c0f39ae3d64907c7d35136940"
+    },
+    "assets/effects/thumbs/fast-box-blur.png": {
+      "size": 25599,
+      "sha256": "facb1fac61d5c34d762b5850114e4a40f63134fa396e23735c5b293fa8b7140c"
+    },
+    "assets/effects/thumbs/fill.png": {
+      "size": 1340,
+      "sha256": "87b8cb134e39c7a96dccdc57f1b992b65b3c1664504746b3eff92e6aaca6f384"
+    },
+    "assets/effects/thumbs/flicker.png": {
+      "size": 22921,
+      "sha256": "81133d28b74fa8f30d89ee9534e293910edc279bfcd1474e76d5bf1cf02b99a5"
+    },
+    "assets/effects/thumbs/fluid-fish.png": {
+      "size": 38926,
+      "sha256": "898ef3bf1f9740fbfe210df3c9c87d3424f89af667ec087af8c6999287b0c471"
+    },
+    "assets/effects/thumbs/fluid-fish.webp": {
+      "size": 32466,
+      "sha256": "2ffaa304f0668fc606a4e93c3dfa0e49d95d0f936d9b86f50be87a62ddff4e28"
+    },
+    "assets/effects/thumbs/fsmb.png": {
+      "size": 29161,
+      "sha256": "e40cd5ca758a091df05646c928fa0db789e119fefb04ce1a432f2379fdb0aa2b"
+    },
+    "assets/effects/thumbs/glow-aura.png": {
+      "size": 14987,
+      "sha256": "433ed8f5b0db6fe1b6d8f81fc4b6aa68e5160a1371ded525ea7fe2f79737609c"
+    },
+    "assets/effects/thumbs/grad-exposure.png": {
+      "size": 19979,
+      "sha256": "0a9581678596fdf6118bc40df164a050bb32b1ca16427cb3290147674c2c6f8a"
+    },
+    "assets/effects/thumbs/gradient-overlay.png": {
+      "size": 31569,
+      "sha256": "8777fe8bf74009c7a72ff2df7327ed4426b6da4aa7bf2cf06be22576827bcf57"
+    },
+    "assets/effects/thumbs/grid.png": {
+      "size": 889,
+      "sha256": "19b96d30e7472c26946cb8d52c76eb6772105b757e965ab9c704026429d9f499"
+    },
+    "assets/effects/thumbs/haze-flare.png": {
+      "size": 28205,
+      "sha256": "6a7bf8fab7fd6a1b43040cc427d5543697bbb5cf4104584b9b3c2cba957a5779"
+    },
+    "assets/effects/thumbs/highlight-shadow.png": {
+      "size": 23346,
+      "sha256": "cc502d9468f55e63e8468cd114e6c914a2ad824d949712ad9f1c69c4fa43187e"
+    },
+    "assets/effects/thumbs/hue-shift.png": {
+      "size": 25980,
+      "sha256": "b3de79bbb56b7d016732f3fea945a413c6e6ac331447c9cc02e52ae1f82d86f9"
+    },
+    "assets/effects/thumbs/invert.png": {
+      "size": 26108,
+      "sha256": "df6dfbb020d6a23e6deb9cf62837230df2ad89ab15a1b9d4fb97ee2ecec60773"
+    },
+    "assets/effects/thumbs/linear_wipe.png": {
+      "size": 20381,
+      "sha256": "832b91eb2b42304b13e9c65eddce3b322bed013098218bd2d4e8fa52e80a7866"
+    },
+    "assets/effects/thumbs/lumia.png": {
+      "size": 25542,
+      "sha256": "546de2a44b6fe47014bc1c60dab0ef6e03cabdac79f25ef16cc314d4697c8641"
+    },
+    "assets/effects/thumbs/mono.png": {
+      "size": 13965,
+      "sha256": "1003b0f1767b2203b9fe09f71ffe9d97bd7d06f9802245e29a08a4db198caad0"
+    },
+    "assets/effects/thumbs/optic-compensation.png": {
+      "size": 18983,
+      "sha256": "92e0e100752cbdc66239e93ed3bad15531442121905097877042c82888e7ea3e"
+    },
+    "assets/effects/thumbs/oscillate.png": {
+      "size": 26389,
+      "sha256": "3485ea1f27f9d8edcc81b5a5715ff71e8398bb34df8b59bd709409df7e8e9587"
+    },
+    "assets/effects/thumbs/particle-engine.png": {
+      "size": 1184,
+      "sha256": "e5afb8fee94f29ea3218364d06a9cc907b977587e14a4e31115aac932b5386ac"
+    },
+    "assets/effects/thumbs/point-control.png": {
+      "size": 2118,
+      "sha256": "6f3d0825042b513cdc3987460cfdb383daed41bb0ba43844c01846c815184ec7"
+    },
+    "assets/effects/thumbs/pyramid_3d.png": {
+      "size": 5246,
+      "sha256": "524abf75232566d209dad6dce5e4501c1ddd30c09b285bacbdc079e0e37979a5"
+    },
+    "assets/effects/thumbs/radio-waves.png": {
+      "size": 4601,
+      "sha256": "4204bf0c2f2d5b46a54f2d5188ee0f7c8b38c20f595c97c83f7b51a101bab0c6"
+    },
+    "assets/effects/thumbs/rays.png": {
+      "size": 24639,
+      "sha256": "c303dfe384d27e7280ff998a565374e8b13026a3c4f309ac64cb1797a7d222ec"
+    },
+    "assets/effects/thumbs/rgb-split.png": {
+      "size": 30711,
+      "sha256": "9ff7b4cce6f46c22e84832e1c72201655b72af414ed02efe6ea77ef0335f00ff"
+    },
+    "assets/effects/thumbs/saturation-vibrant.png": {
+      "size": 26984,
+      "sha256": "f3a33b7de64daa1e0a796cd9f3cd66ffd493a500da61dc6cceffe53bfbf0bf5c"
+    },
+    "assets/effects/thumbs/scanline.png": {
+      "size": 26109,
+      "sha256": "f45a9518188c58f07d5b75c0f49619da7dcabadc2f09995fbbe91d522b37acd0"
+    },
+    "assets/effects/thumbs/shake.png": {
+      "size": 29516,
+      "sha256": "96100510f6576e6b8ca700240060517f638bd7499fc040a7c5a0a7901fd855e8"
+    },
+    "assets/effects/thumbs/sharpen.png": {
+      "size": 34873,
+      "sha256": "6f985d3e9bb27947b605246c8ac24c61ed47e595260b32ef3260d4a8e4b9ce2a"
+    },
+    "assets/effects/thumbs/shatter.png": {
+      "size": 18021,
+      "sha256": "5733907f6782fb7d17bbb5f65d64fe3d534aa140498c2cd38123afd7e1334723"
+    },
+    "assets/effects/thumbs/slider-control.png": {
+      "size": 2401,
+      "sha256": "cfe1c1b4c61ab1bb94a288d35fda2dbf9a2b30ba45c65c661cdad8ca1a8686b5"
+    },
+    "assets/effects/thumbs/solid-aura.png": {
+      "size": 21828,
+      "sha256": "5097d7f7f7d83b633b58fa3f019fbd9b914eec5541274c76e2eacf25e7cd9f88"
+    },
+    "assets/effects/thumbs/sphere_3d.png": {
+      "size": 27631,
+      "sha256": "b77bd95fdffc68d4c7c00c9683e494dfcc478a233b13914b63869c41b30b013f"
+    },
+    "assets/effects/thumbs/star-burst.png": {
+      "size": 16672,
+      "sha256": "661ff31ad7633acff167fe056d846f442117942a38948e837c0512e21427ef90"
+    },
+    "assets/effects/thumbs/swing.png": {
+      "size": 29295,
+      "sha256": "a3dd60452095ca307a893c63b69a93003217f75b45946502f5dd7b71322537ec"
+    },
+    "assets/effects/thumbs/tile.png": {
+      "size": 30927,
+      "sha256": "357b9d199092bd60267158055a0fa36b75fa51716944f98e3ed4985081d33f18"
+    },
+    "assets/effects/thumbs/tint.png": {
+      "size": 24294,
+      "sha256": "ce48abbea76e24ca2141078695633955ebdf28df7a55051c0b77cb615fd3730d"
+    },
+    "assets/effects/thumbs/transform.png": {
+      "size": 19814,
+      "sha256": "c5b26dd80a920e37d82668c58286544a5783afe9555d6d10b727b85ca516bb57"
+    },
+    "assets/effects/thumbs/turbulent-displace.png": {
+      "size": 31199,
+      "sha256": "43f6ebb15a94040f0b3f5a880174f59f8f5e93741ed23765a8558b3bfe4473e7"
+    },
+    "assets/effects/thumbs/unsharp-mask.png": {
+      "size": 31874,
+      "sha256": "63dbc91953e37d999859eadd2e40be9db5073ab28e2a021e643e513162286c29"
+    },
+    "assets/effects/thumbs/vignette.png": {
+      "size": 28841,
+      "sha256": "d4856a45fda1019e544d4523c3a071ebb52f2b154c85ba8b84a1149ee8a054da"
+    },
+    "assets/effects/thumbs/warp.png": {
+      "size": 26858,
+      "sha256": "a61225130bdf66dc5774f439118d215d5dbb8ace3eed5cd2d7fc4664cc5e629f"
+    },
+    "assets/effects/thumbs/wave-warp.png": {
+      "size": 29532,
+      "sha256": "2328e8bd48d1bc298e7bb5fb136fca6e4634fe92983469049808edbb2b4e33a1"
+    },
+    "assets/effects/thumbs/wipe_jaws.png": {
+      "size": 8445,
+      "sha256": "3181c04190ce25d8b17e395901552430a17e80680e5e005d14234479670ed287"
+    },
+    "assets/fonts/CalSans-SemiBold.ttf": {
+      "size": 148964,
+      "sha256": "ed3461b0d44fc9bc090f5418cbc8acb7e0ae16ee3514020b5caeccd57183a541"
+    },
+    "assets/fonts/CalSans-SemiBold.woff": {
+      "size": 52504,
+      "sha256": "c8c75bb76bc382db7956bda4babeb0a647dba02c7c3209e4652f1b66c0ab7634"
+    },
+    "assets/fonts/CalSans-SemiBold.woff2": {
+      "size": 40932,
+      "sha256": "d3e38c946c6c0299f321b6cf2c92f7f26e202530f49d6bc86d52e9fd74f393a2"
+    },
+    "assets/fonts/MaterialIcons-Regular.ttf": {
+      "size": 356840,
+      "sha256": "ef149f08bdd2ff09a4e2c8573476b7b0f3fbb15b623954ade59899e7175bedda"
+    },
+    "assets/fonts/MaterialIcons-Regular.woff": {
+      "size": 57620,
+      "sha256": "c4a1baec300d09e03a8380b85918267ee80faae8e00c6c56b48e2e74b1d9b38d"
+    },
+    "assets/fonts/MaterialIcons-Regular.woff2": {
+      "size": 128352,
+      "sha256": "8265f64786397d6b832d1ca0aafdf149ad84e72759fffa9f7272e91a0fb015d1"
+    },
+    "assets/github.svg": {
+      "size": 821,
+      "sha256": "7da131e332693201ffba73a71f3ca60a8ce5acabf99c808c73adb516e156d033"
+    },
+    "assets/grid.svg": {
+      "size": 4397,
+      "sha256": "0b0cb072088a157ad4204c36511e33df5b6fc328075a9d8d7133fdac55f361e9"
+    },
+    "assets/handles.svg": {
+      "size": 2949,
+      "sha256": "3d1986cce499f67c2a1adfc2f6ddc225290db2e3c5bc7556d22f2db7b53fdaa7"
+    },
+    "assets/icon-192.png": {
+      "size": 14673,
+      "sha256": "2381f6fe69ff020e863584354f82608a7cc5c7600b0e75f3fd64b8f3218f75b5"
+    },
+    "assets/icon-512.png": {
+      "size": 46666,
+      "sha256": "1dfd62834014519c1415cbf6ea9f295937b67bb350e3ebaf972617f77e92bdf6"
+    },
+    "assets/icon-extension.svg": {
+      "size": 412,
+      "sha256": "67a517cbf5ce2d3c08fcbe611b0b9c15e3012ce575e7f5781d0e4e23671dec9e"
+    },
+    "assets/icon-motion-blur.svg": {
+      "size": 244,
+      "sha256": "5116ab23e5907c50f8fa22cc725ae21cd94c3c10e4565c7bd6e47fa892399afd"
+    },
+    "assets/icon.svg": {
+      "size": 17591,
+      "sha256": "1ac4f74f4883934e1121acb0fb53f12cf6206a6cec7e92aca8904c38d00bf732"
+    },
+    "assets/qris.png": {
+      "size": 502224,
+      "sha256": "a7af89e725f14837c598da6ad52ab5023f59ed1771573cebe3abd983d951f161"
+    },
+    "assets/star-outline.svg": {
+      "size": 273,
+      "sha256": "92953fe67db7d15679fc153c9beb63d6aa502d89c334f920e1f3ecf324283fb1"
+    },
+    "assets/star.svg": {
+      "size": 195,
+      "sha256": "00bf8a032426f8f603118db4cbe707b23c4f4352547175c38d31c9433e6fd5b3"
+    },
+    "assets/stock/stock-1170986.jpg": {
+      "size": 5817,
+      "sha256": "fce7ca3959638733ee4f9cbebee9f4e08cefbc989f8a3dfe34e9dd5b5f63a1fc"
+    },
+    "assets/stock/stock-127028.jpg": {
+      "size": 4504,
+      "sha256": "8299d27fd7e6a3865f03f6da73fca05030a4d687fefd6ba26397bf68ff94ebbc"
+    },
+    "assets/stock/stock-1472999.jpg": {
+      "size": 8372,
+      "sha256": "c6c1ae0fe7e031f5e28e2b4117da99f3c4abb2812e7a8f44933520ccb8287578"
+    },
+    "assets/stock/stock-1543793.jpg": {
+      "size": 4949,
+      "sha256": "7714f27137709727a4b05aad3eb25b5a4f1bf066aa9ec2ade09505d3d980495a"
+    },
+    "assets/stock/stock-156934.jpg": {
+      "size": 6445,
+      "sha256": "32866d27d8d6283c14e8b5e1bc49416ecae67121f8cad82dee5a5f6db4d98d51"
+    },
+    "assets/stock/stock-1741205.jpg": {
+      "size": 5048,
+      "sha256": "ba241c0b40f1c133ac7a758f7d32dc3b73d21d2ad1ae4430c5171fd32f23a886"
+    },
+    "assets/stock/stock-2061057.jpg": {
+      "size": 4918,
+      "sha256": "3252696a37fdbeabbfded79e1ad5e1ba9ec1140b48217b0574f5e0e73badfb95"
+    },
+    "assets/stock/stock-617278.jpg": {
+      "size": 6402,
+      "sha256": "b04173da45369709beae7ed78f857174e857202d48981686d0f3d334cff4b377"
+    },
+    "assets/stock/stock-774731.jpg": {
+      "size": 5716,
+      "sha256": "9de385683babb27fb4fc57e25bed7747cdb4c2a49cb0f726b9864e228774e9e8"
+    },
+    "assets/stock/stock-coding.jpg": {
+      "size": 6117,
+      "sha256": "7aa09983f9c777c5c4bc039212abff697d76c13d2a607df8e378d59ed86fcd9f"
+    },
+    "assets/watermark.svg": {
+      "size": 34915,
+      "sha256": "f5e14ccaffaecdaf32b45e10e15cf9f9492b5a340c07c083d4df9612e088923f"
+    },
+    "effects/backup/anamorphic_flare.js": {
+      "size": 23824,
+      "sha256": "2df2b47f2a12bcccd4b6a489cd0d66bd8c331ca30754ef82428041cba2d2aa27"
+    },
+    "effects/backup/angle_control.js": {
+      "size": 562,
+      "sha256": "9fcc9b20c85e6066bc9636c890b67ee9e5ecff6019e858c31d3a46180b7f8171"
+    },
+    "effects/backup/bevel.js": {
+      "size": 4466,
+      "sha256": "08284a40dcb808e3a9405794c4f15a0b6f98db77b266e4269039c3ed3883e1a5"
+    },
+    "effects/backup/box_3d.js": {
+      "size": 12122,
+      "sha256": "443b85de874254fa2ffc95220f79475af763c3a1dc4f58ccd7ee7e192f824e7c"
+    },
+    "effects/backup/brightness_contrast.js": {
+      "size": 8785,
+      "sha256": "936e3dc9706e8a52a10ea3ddbd515aaa68431ddb0ab097d1a3ba3b3b4d257180"
+    },
+    "effects/backup/camera_lens_blur.js": {
+      "size": 17746,
+      "sha256": "84afbddcf50638d78e7c97b7098d95ccf2897686ffe881e705bd6ceccd362423"
+    },
+    "effects/backup/checkbox_control.js": {
+      "size": 561,
+      "sha256": "d0ccc750fb254cad39df9cdff3b298f4e918bdb573d4cc0182c6324958daf8d6"
+    },
+    "effects/backup/chromatic_aberration.js": {
+      "size": 15360,
+      "sha256": "73ce5ea5b4b55e69ded482eda392c5811c4f1e7d6e1f9258d010c5a52e304434"
+    },
+    "effects/backup/color_balance.js": {
+      "size": 1603,
+      "sha256": "dbb8a89a967a20670fc8f5d5ab58bf0afcd375a3fa2cd85adac1f4f01f43b4e2"
+    },
+    "effects/backup/color_control.js": {
+      "size": 547,
+      "sha256": "289e031d485889e89fb04aeb0bdbdc93db5b6216fdc66376f7e5ca42a6f5333d"
+    },
+    "effects/backup/color_temperature.js": {
+      "size": 1837,
+      "sha256": "220e4fca4990d37aaec643daca099a2c2380c0bf1d97c35ab3a33e200fa64645"
+    },
+    "effects/backup/colorize.js": {
+      "size": 4232,
+      "sha256": "50bd4f759c0581756e0b09b4debdd4ccc4afeef0cb8418fc7d3d21c08e1a6fae"
+    },
+    "effects/backup/curve.js": {
+      "size": 12718,
+      "sha256": "24aa750e48ba7917781ea704a6354d61559c3d07ee0f3c12d3d49309fd40ea0a"
+    },
+    "effects/backup/deep_glow.js": {
+      "size": 10000,
+      "sha256": "f0b02e52f363121f0d03dc00d2447a72983b5a52568c819b57ad4aefa12487b5"
+    },
+    "effects/backup/diffusion.js": {
+      "size": 15547,
+      "sha256": "1fff786321d157feb0807b89b90ca1b32ffd0d85ae61d9cf772f6debec8aa1e7"
+    },
+    "effects/backup/drop_shadow.js": {
+      "size": 2439,
+      "sha256": "601ca42a46fb33dc8856fd6509017cffd9b95f76979bcf90b63a56dd72006f6c"
+    },
+    "effects/backup/dropdown_control.js": {
+      "size": 647,
+      "sha256": "afdc5050848abe20e976a2a767f4a4857f5bec104465eaccc39839ef469f099a"
+    },
+    "effects/backup/exposure_gamma.js": {
+      "size": 9521,
+      "sha256": "bbd264ab0481342c3f77a5197558441b722d8bd3981a23952821d3dbbefec910"
+    },
+    "effects/backup/expression_controls.js": {
+      "size": 1177,
+      "sha256": "2c61fa48499e49ba096d3382da1a9c2eab87eee9be38d59a1cd7f26ef844d888"
+    },
+    "effects/backup/extrude_3d.js": {
+      "size": 6782,
+      "sha256": "3b486937b2c62cce6f3e6d212dffcfeb710673ac8138f4555a9fa8363d568455"
+    },
+    "effects/backup/fast_box_blur.js": {
+      "size": 2232,
+      "sha256": "b0662ef91f6a5fd80b94e4871358531143c0420fb004b9e40932d2d0f55af60c"
+    },
+    "effects/backup/fill.js": {
+      "size": 4712,
+      "sha256": "8118404ab0c09edd2a6f41402c31e49321a467ddb6e33f7519374ea9cbc5d858"
+    },
+    "effects/backup/flicker.js": {
+      "size": 5819,
+      "sha256": "8700f1fd94be932663c07b729c7640611896ce14cb304823c562f6d0bed1c4f6"
+    },
+    "effects/backup/fluid_fish.js": {
+      "size": 26963,
+      "sha256": "5ce3a3471099f67e58fb1dd406b1db2e8986785b9dc80b702a3502af0407425d"
+    },
+    "effects/backup/fsmb.js": {
+      "size": 30378,
+      "sha256": "fdac1a30ff4818b22601f76f2ba5163866db1f10176c1b1532417c92fafaac37"
+    },
+    "effects/backup/glow_aura.js": {
+      "size": 20705,
+      "sha256": "8487c7c246400eeeb591557aef3533ffda9f0f67f9db39e92d7e7d5c946ea403"
+    },
+    "effects/backup/grad_exposure.js": {
+      "size": 9145,
+      "sha256": "06b60c261559d39b528af89b7f8a4e8357a1a9a11ad993cb6998ae648d1cbe51"
+    },
+    "effects/backup/gradient_overlay.js": {
+      "size": 4068,
+      "sha256": "01e56d70a5dea56eb484a216d746971bf3dd6c0a4166ef6f600b1e49d14d4721"
+    },
+    "effects/backup/grid.js": {
+      "size": 5436,
+      "sha256": "83370cd54bb63e52d2b56a669f863bde79437cf5f2759d9e4cb2a143aedb3520"
+    },
+    "effects/backup/haze_flare.js": {
+      "size": 25116,
+      "sha256": "4dd5b5877b505e009ba4aedd755c4322dcdfb20039cc005255bee62c3debbb61"
+    },
+    "effects/backup/highlight_shadow.js": {
+      "size": 8948,
+      "sha256": "decfdf08334d7c94338f0539174feedfb69e42126c7cdadc7929e7ccbcb84194"
+    },
+    "effects/backup/hue_shift.js": {
+      "size": 8561,
+      "sha256": "104d3f5e4b043fdee28d177d785577753910e8a7f3b03f82cc592eb0753e2ea1"
+    },
+    "effects/backup/invert.js": {
+      "size": 8150,
+      "sha256": "f35e0b53fd76ab118d36c5565c89ad36848919b45b2606bcf6d28957100f34c4"
+    },
+    "effects/backup/linear_wipe.js": {
+      "size": 4523,
+      "sha256": "ef9427cd6bae4c8aa4e3f06df31234e7094276e6bb4f22632d56ee4f5d34324a"
+    },
+    "effects/backup/loader.js": {
+      "size": 4431,
+      "sha256": "e75bc76ab74073f36df45f7063c47693e07f15e7ceec78f899c3823bf2054020"
+    },
+    "effects/backup/lumia.js": {
+      "size": 4298,
+      "sha256": "d737054af2fa644d5550560404148079ec7a3d30222bc72adf4fa4b2719c522a"
+    },
+    "effects/backup/mono.js": {
+      "size": 12472,
+      "sha256": "2ca52d05861375168bad1de389efc8ee9015c519534983b4948d72a83f93e84b"
+    },
+    "effects/backup/optic_compensation.js": {
+      "size": 17527,
+      "sha256": "35f89573863b7f43110ff1e0bf75b0b14dde4324df1e72b9c0a94204733826c7"
+    },
+    "effects/backup/oscillate.js": {
+      "size": 3073,
+      "sha256": "47b9becab1f7b288dedf0bcf74677b70584b801501b43bb92fd81d57529d440e"
+    },
+    "effects/backup/particle_engine.js": {
+      "size": 53689,
+      "sha256": "996a0fc1e57e1821ce2fb74ad2a653d5df0ef60529a7ef215eb7fa32d1419b9b"
+    },
+    "effects/backup/point_control.js": {
+      "size": 688,
+      "sha256": "8a63de6c75848cb3839a05b32b94f4f038f928442b85e4c3deb244f24773ca4d"
+    },
+    "effects/backup/pyramid_3d.js": {
+      "size": 6269,
+      "sha256": "443398c91738ba58ed9dd80a1b09111537b5d98535fa046ec1945b0aa5a07157"
+    },
+    "effects/backup/radio_waves.js": {
+      "size": 7269,
+      "sha256": "2dc42975f735fc433f826033059e36f2deb22b14b091a5e2bc96bac969582c21"
+    },
+    "effects/backup/rays.js": {
+      "size": 5666,
+      "sha256": "737e4cb62bd053c63635c3c46dfb9982c771161b90ae7ff93e2869cddffcd5f2"
+    },
+    "effects/backup/remove_bg.js": {
+      "size": 7075,
+      "sha256": "36525ca5d1416efed4f8bf52e66cca11519228b277a3c3673e720175c4f08368"
+    },
+    "effects/backup/rgb_split.js": {
+      "size": 3715,
+      "sha256": "b27f36b2114b7189a01cb2a1c8e4d46b8f3221df12907220fb65b642e835a9f9"
+    },
+    "effects/backup/saturation_vibrant.js": {
+      "size": 8907,
+      "sha256": "60f65ce9b26e234bb76ad44089e46dd6e38d865dc4b6a6a9752ccff5d7233656"
+    },
+    "effects/backup/scanline.js": {
+      "size": 4275,
+      "sha256": "963e9e45c3c3357da008b4368966bd5153815f51bc6e91f37c7d3fc03f493cea"
+    },
+    "effects/backup/shake.js": {
+      "size": 7217,
+      "sha256": "67b463c8ea62cd82b943118a0148b9b9e1a87d6d6b3884b4df72affc548f74fc"
+    },
+    "effects/backup/sharpen.js": {
+      "size": 16930,
+      "sha256": "6fafde7a28306747c5cdc8df4a8d069bda39fffb9774b1702e4dabca644fe7e5"
+    },
+    "effects/backup/shatter.js": {
+      "size": 41714,
+      "sha256": "1d43d6d2e9f70aa6b5d3aa9e9161f6ba088d29d9427c7792c07d25e87e69f3b0"
+    },
+    "effects/backup/slider_control.js": {
+      "size": 574,
+      "sha256": "58d2c590c94623280a566cb28560fb84f72509d606b883cae72450a18ee44d32"
+    },
+    "effects/backup/solid_aura.js": {
+      "size": 7440,
+      "sha256": "9ea673a0f70be3ffc22cf8b45088bb0cd2e5aab22df54b0b74434e287f520fb0"
+    },
+    "effects/backup/sphere_3d.js": {
+      "size": 8215,
+      "sha256": "f029f7e4ff4ef707ec0c57925d19171405836210e14beba844b46876a0b305ff"
+    },
+    "effects/backup/star_burst.js": {
+      "size": 9114,
+      "sha256": "96949e3cc96e1b93391bddc48b1485a1e08fd0742b3b501e77a249753506e4fc"
+    },
+    "effects/backup/swing.js": {
+      "size": 3272,
+      "sha256": "9cf869a745d2da906d86260fe03043bb44d1cf0fd0990436bfd69912f6d32ca5"
+    },
+    "effects/backup/tile.js": {
+      "size": 5614,
+      "sha256": "a76a1807107b1ea38bd07017a0639f508d8708c6d61dbab22c2eee014b4c0ab7"
+    },
+    "effects/backup/tint.js": {
+      "size": 1920,
+      "sha256": "b5740785ae5334ffdd96281b8d2aa06333bb96c6d43215d318dc9fbec241aa41"
+    },
+    "effects/backup/transform.js": {
+      "size": 3162,
+      "sha256": "0e1c6e5d1673883f5dba73b4bd198cef2b991f1e73ca4549a1923650712d511a"
+    },
+    "effects/backup/turbulent_displace.js": {
+      "size": 22387,
+      "sha256": "da135e81b1c1f5b6368870232e6ecc16c4edf18f64891a43e183188b1a133af3"
+    },
+    "effects/backup/unsharp_mask.js": {
+      "size": 14342,
+      "sha256": "f90d9651a5095e12f0b89a6993199510f49531031c0f4d5368dbd2c33c13a7f3"
+    },
+    "effects/backup/vignette.js": {
+      "size": 6430,
+      "sha256": "54e155c02d607995caf9d316ae18337115169265d67f3f9c8095e0b5646bc85d"
+    },
+    "effects/backup/warp.js": {
+      "size": 23614,
+      "sha256": "4bfc3f4452bcb388937720453c34b1030b03ba8329df990c6592d949629d4718"
+    },
+    "effects/backup/wave_warp.js": {
+      "size": 22899,
+      "sha256": "aa0d6a6fb4270ecdc03133fd602a3f6507ed032ee64c1820d7b6a7c0f627ded0"
+    },
+    "effects/backup/wipe_jaws.js": {
+      "size": 7411,
+      "sha256": "d537b5c647070bf00b12dc53225b3ab72a1ce522626f2eb8f03d44324308f856"
+    },
+    "effects/effects.wasm": {
+      "size": 214722,
+      "sha256": "193f6894c54f80c0b92637b7b388b70aacd44450b7dad516498b7ff420725f14"
+    },
+    "effects/loader.js": {
+      "size": 6994,
+      "sha256": "c2ac8de70c33f24d5d3aef220233b1ceedf3bac79fd6a355b47df6d164fa62d8"
+    },
+    "effects/manifest.json": {
+      "size": 9672,
+      "sha256": "a7789858c49940271f629aa577e636569b6ccd1f68093b2248b3345635ee7f4f"
+    },
+    "fticons/cleaned.woff2": {
+      "size": 11016,
+      "sha256": "0b0d94be6bd129d2cb624a9d649b1c741664dcf71204a91102567c139997c13b"
+    },
+    "fticons/fticons.css": {
+      "size": 11974,
+      "sha256": "742ad51f0bb6e8164ecb2c55285533b5706589b7d78e5f79aa17e9c13453180c"
+    },
+    "fticons/fticons.woff2": {
+      "size": 11008,
+      "sha256": "92e0339ffa864a60a147d28e820bd64ecc46b8893d16a9701ebd2261f0e51959"
+    },
+    "fticons/names.json": {
+      "size": 9011,
+      "sha256": "b4c88509c4a74683de987d3626331b5904249eb5325ed75ac8f86379ac7d7521"
+    },
+    "fticons/raw icons/add-audio-effect.svg": {
+      "size": 802,
+      "sha256": "e56daf36aa6630e7645fcf4c6189c4328399fadc7143cf1a0abb77b8cbd751c1"
+    },
+    "fticons/raw icons/add-delay-effect.svg": {
+      "size": 955,
+      "sha256": "ee454aec37d587f7d1445a7a796652786a7cedeabb0962c03201a58ec7dfc77b"
+    },
+    "fticons/raw icons/add-reverb-effect.svg": {
+      "size": 416,
+      "sha256": "9cb04c529932172cb4afc22674ad827f94f7fe5c6624020e0e1f550280f0117f"
+    },
+    "fticons/raw icons/animate.svg": {
+      "size": 269,
+      "sha256": "c19f9d934c6a407531a3798d6bafa526bd0d3ce73ac62887dc8d3ddae1b7dd59"
+    },
+    "fticons/raw icons/arrow-1-stroke.svg": {
+      "size": 482,
+      "sha256": "a4f62dffed321b1101beb949433bae8b1d465886347ead4ae9a747ac4f2eeee1"
+    },
+    "fticons/raw icons/back-2.svg": {
+      "size": 1093,
+      "sha256": "d6769486bc40db2ac00a70b77b7e63bf7e1890972e0c6cd5468e1da3fd64439b"
+    },
+    "fticons/raw icons/back-to-projects-2.svg": {
+      "size": 1748,
+      "sha256": "47037d5033e79d3b9456ae57bbbbba28681b9874368a27a73900b6dce749b6e0"
+    },
+    "fticons/raw icons/back-to-projects.svg": {
+      "size": 203,
+      "sha256": "978e8b75f5a3416af017e957037e57917e804c78b3eb1a1447d7333985a37df3"
+    },
+    "fticons/raw icons/back.svg": {
+      "size": 203,
+      "sha256": "978e8b75f5a3416af017e957037e57917e804c78b3eb1a1447d7333985a37df3"
+    },
+    "fticons/raw icons/badge-3d.svg": {
+      "size": 1218,
+      "sha256": "eccd6758aba2290fbfd148741a2e3cab52e6a4cac42c5f62e9ad7e90536680e2"
+    },
+    "fticons/raw icons/beatmark.svg": {
+      "size": 228,
+      "sha256": "8ba466afc0a284e8aa9a8021d1cf00af5ea1239aa404b01e4d99f8693839f768"
+    },
+    "fticons/raw icons/blend-card-darken.svg": {
+      "size": 165,
+      "sha256": "94b583cd25271af3de13ba73d763af8fe820e13bc14061d16de1dfafc92e31f3"
+    },
+    "fticons/raw icons/blend-overlay.svg": {
+      "size": 2984,
+      "sha256": "e13505a92caf5a8332fc28022be03a2037caae7301bf97d91391ba3f4931d11a"
+    },
+    "fticons/raw icons/btn-generate-project-link.svg": {
+      "size": 1075,
+      "sha256": "b74f3e7a7574532224c029b5214bab0c0dc8f1487ba4f3a25533dbdf53ece970"
+    },
+    "fticons/raw icons/camera.svg": {
+      "size": 1280,
+      "sha256": "7c4ef9406184f8f1769f57508df626a27e168c6d8f1a6536c8e5cf0b4b21f914"
+    },
+    "fticons/raw icons/check.svg": {
+      "size": 240,
+      "sha256": "f050ab746d10b27717d1474f58eb1559f9fefe72de1c51efea1e224d3fa38a24"
+    },
+    "fticons/raw icons/chevron-down.svg": {
+      "size": 677,
+      "sha256": "970588317c73d205c1ebfbbb5a48a11403c4e10fd04f24aa5364077726838711"
+    },
+    "fticons/raw icons/chevron-left.svg": {
+      "size": 188,
+      "sha256": "6392cec14ce6fa08e9e9bcf82a8de3f13be1729208c21129711653c17dc14ea7"
+    },
+    "fticons/raw icons/chevron-right.svg": {
+      "size": 210,
+      "sha256": "51ed729570e24f06a0733985bcbbe53e265140b6208758e13c8df5e4aeace1c8"
+    },
+    "fticons/raw icons/chevron-up.svg": {
+      "size": 643,
+      "sha256": "f873e48f81c270cea50609ada0f24293b39abdfba1ef4edf95443b3ac1a056f5"
+    },
+    "fticons/raw icons/chk-graph-overshoot.svg": {
+      "size": 240,
+      "sha256": "f050ab746d10b27717d1474f58eb1559f9fefe72de1c51efea1e224d3fa38a24"
+    },
+    "fticons/raw icons/circle.svg": {
+      "size": 689,
+      "sha256": "570f92c704d23fc2917468f5721dc84d81e12a56c79968578a676ec9d5c29512"
+    },
+    "fticons/raw icons/close-2.svg": {
+      "size": 288,
+      "sha256": "222da5a2edbf870c51e638e07e58f3eead4dd592295ccf819907865b9fb6bdc9"
+    },
+    "fticons/raw icons/close-3.svg": {
+      "size": 288,
+      "sha256": "222da5a2edbf870c51e638e07e58f3eead4dd592295ccf819907865b9fb6bdc9"
+    },
+    "fticons/raw icons/close-4.svg": {
+      "size": 592,
+      "sha256": "1c9cc985408ed39d717cf232c144c204fa370d886b4f8fc171a8113ed86d0538"
+    },
+    "fticons/raw icons/close-export.svg": {
+      "size": 203,
+      "sha256": "978e8b75f5a3416af017e957037e57917e804c78b3eb1a1447d7333985a37df3"
+    },
+    "fticons/raw icons/close.svg": {
+      "size": 291,
+      "sha256": "216646f6ac197690c24381e5f4d14ba08531f5d85eb95b178497d1af3f2ab2db"
+    },
+    "fticons/raw icons/collapse-transformations.svg": {
+      "size": 3699,
+      "sha256": "c2a6373320404d3cf450bd91bd92c733c3a4fc1f75307f91ae98b7c27e5335d8"
+    },
+    "fticons/raw icons/color-fill.svg": {
+      "size": 1175,
+      "sha256": "1c7d315b3f5566d9d050d922cf741ae88f7de95a37b020b3ed17e2cf26e8bdf3"
+    },
+    "fticons/raw icons/color-wheel.svg": {
+      "size": 1324,
+      "sha256": "0a7830413c59c5f82d6a76a674df7c86aa1aa1849a97846c055e53769663fa55"
+    },
+    "fticons/raw icons/composition-settings.svg": {
+      "size": 2255,
+      "sha256": "dc64c9e2b3dd6a384ba6880252212e25c14a1efef71ccbce89339b5425119caa"
+    },
+    "fticons/raw icons/control.svg": {
+      "size": 3038,
+      "sha256": "68b137810d63c8efecda9981bed209542c1f72b2937ec9e81e31d0612c196bb0"
+    },
+    "fticons/raw icons/copy-link.svg": {
+      "size": 618,
+      "sha256": "ec83ba3abb1a0ced02a825c66b2de7fa1669f2af29a1b79cb8f435eb32e73dfc"
+    },
+    "fticons/raw icons/copy.svg": {
+      "size": 618,
+      "sha256": "ec83ba3abb1a0ced02a825c66b2de7fa1669f2af29a1b79cb8f435eb32e73dfc"
+    },
+    "fticons/raw icons/custom-animate.svg": {
+      "size": 269,
+      "sha256": "c19f9d934c6a407531a3798d6bafa526bd0d3ce73ac62887dc8d3ddae1b7dd59"
+    },
+    "fticons/raw icons/custom-resolution.svg": {
+      "size": 2046,
+      "sha256": "5b2743c1f4ca7b10c7eacbd6dfcdaa46556451ae4475158042f781351fa4ab0a"
+    },
+    "fticons/raw icons/custom-style.svg": {
+      "size": 626,
+      "sha256": "3355ffb19b7b1d012ac34a3a53f47ff18f59be686dbda056c1a67e14cf16a383"
+    },
+    "fticons/raw icons/custom-text.svg": {
+      "size": 160,
+      "sha256": "ec375d3037dfc6ee9e8fa951c685b9992e944446ebc75da25dacd64fecc6188d"
+    },
+    "fticons/raw icons/cut-left.svg": {
+      "size": 3261,
+      "sha256": "4708f127cc674e2fa0283524faa740942ee9c802bafc7d7c38e04241375b22de"
+    },
+    "fticons/raw icons/cut-middle.svg": {
+      "size": 1786,
+      "sha256": "29a2bcfebf89cd1892dac6fbc91277b476d97d3854cafc61a4d12930ee3344c3"
+    },
+    "fticons/raw icons/cut-right.svg": {
+      "size": 3417,
+      "sha256": "34a42d94c7b1d5a0e68d2ece90bb9a36cf5cb3b3cbf18430bb72a627fae3701e"
+    },
+    "fticons/raw icons/delete-beatmark.svg": {
+      "size": 415,
+      "sha256": "9307bd3d43b6a88b18b905d07604e1bce36a93b371572c3f77b08d1dee27ebb1"
+    },
+    "fticons/raw icons/delete-media.svg": {
+      "size": 288,
+      "sha256": "222da5a2edbf870c51e638e07e58f3eead4dd592295ccf819907865b9fb6bdc9"
+    },
+    "fticons/raw icons/delete-selected-layer.svg": {
+      "size": 415,
+      "sha256": "9307bd3d43b6a88b18b905d07604e1bce36a93b371572c3f77b08d1dee27ebb1"
+    },
+    "fticons/raw icons/desktop-inspector-empty.svg": {
+      "size": 693,
+      "sha256": "bd2572cb5e9ff2a0dbe2b2de15a58e93b5352743a0ec06ee92973e28e9538e14"
+    },
+    "fticons/raw icons/desktop-panel-media.svg": {
+      "size": 440,
+      "sha256": "c96ef72f0cc4ae66af65f3067f22b3d6a55a3cfd194c795b8121e63f36efb60c"
+    },
+    "fticons/raw icons/desktop-view.svg": {
+      "size": 1448,
+      "sha256": "202bd71c5933e31378d8c7f0577b98acc8257e811dee6d4dcb1bcb59de20d47e"
+    },
+    "fticons/raw icons/donate-qris-toggle.svg": {
+      "size": 669,
+      "sha256": "d33d966fb07be4268520c881aad4691afaa4b49b7598eaefe80feaaf8a5eae37"
+    },
+    "fticons/raw icons/download-as-png.svg": {
+      "size": 234,
+      "sha256": "b5f4b71c7adec1029dc37dd8db78173e87d6cb8e20f5544d4a91976ec95f417c"
+    },
+    "fticons/raw icons/drag-to-reorder-layer.svg": {
+      "size": 1380,
+      "sha256": "36a605e5c00a584a9c1a856bdba93778ccda08d28079a8fce6261e37fc6c8689"
+    },
+    "fticons/raw icons/drag-to-reorder.svg": {
+      "size": 186,
+      "sha256": "cfeff3c04b4a885d87f1e400e2b6612c394b66ef883cf76a6399ec53bd37e91e"
+    },
+    "fticons/raw icons/edit-group-enter-precompose.svg": {
+      "size": 450,
+      "sha256": "1447a5a7850bf1d5eb4cdd278c4b69378f59d1b952a45b820c9a27c9fc5e7da4"
+    },
+    "fticons/raw icons/edit-shape.svg": {
+      "size": 218,
+      "sha256": "698541d08b39db878f067e659a937f931820d371b32a1a5bb7f1aca99de258f1"
+    },
+    "fticons/raw icons/edit-text.svg": {
+      "size": 184,
+      "sha256": "92f652e25ff8588eacc4e76293043e734e23dde8eb305984850bd1bba0e1f329"
+    },
+    "fticons/raw icons/edit-vector.svg": {
+      "size": 781,
+      "sha256": "9dff520a70c08efde25267f42faa64e3d5ac5d43e7d7c08cd704422caaab2d63"
+    },
+    "fticons/raw icons/effect-options.svg": {
+      "size": 777,
+      "sha256": "bf1a40d1b392127a82ffe5917999c543529135bb0e7e22b51c52de783f500b57"
+    },
+    "fticons/raw icons/effects.svg": {
+      "size": 484,
+      "sha256": "55c321ee691ed6ef630f885e355fb77c3cc4946afed55035aafde4cf0c2c0fa6"
+    },
+    "fticons/raw icons/element.svg": {
+      "size": 693,
+      "sha256": "bd2572cb5e9ff2a0dbe2b2de15a58e93b5352743a0ec06ee92973e28e9538e14"
+    },
+    "fticons/raw icons/exclude-group-group-and-exclude.svg": {
+      "size": 2781,
+      "sha256": "734bbc1e331afa42e2fad5f31024f423adf3d499d7d635d9c33c4eb38182547a"
+    },
+    "fticons/raw icons/expand-left.svg": {
+      "size": 4831,
+      "sha256": "30a615103376c167857ca199b43bd2f338def540b89b9aa97eb99e7ea96e7db6"
+    },
+    "fticons/raw icons/expand-right.svg": {
+      "size": 4831,
+      "sha256": "6c577a974f89cef97dcc7d2fcc8ad41fcbee2bfee23452d502a289f1f4ee69ab"
+    },
+    "fticons/raw icons/export-2.svg": {
+      "size": 512,
+      "sha256": "913f633b86aa8e0a28cc9e6e0f16578e82e2db6c32600d39f99b156951da749a"
+    },
+    "fticons/raw icons/export-fs-next-btn.svg": {
+      "size": 240,
+      "sha256": "671ab18fa01b19001f8566fd182bfa4e29953de2534241bb67ebc736ed034321"
+    },
+    "fticons/raw icons/export-presets-json.svg": {
+      "size": 234,
+      "sha256": "b5f4b71c7adec1029dc37dd8db78173e87d6cb8e20f5544d4a91976ec95f417c"
+    },
+    "fticons/raw icons/export.svg": {
+      "size": 512,
+      "sha256": "913f633b86aa8e0a28cc9e6e0f16578e82e2db6c32600d39f99b156951da749a"
+    },
+    "fticons/raw icons/expression.svg": {
+      "size": 1812,
+      "sha256": "10d47ac0a30708affe1e1897e4550e2886aa2f5040ec9f780eeb34739e0e37bf"
+    },
+    "fticons/raw icons/eye-off.svg": {
+      "size": 1369,
+      "sha256": "f0eac8ab1ebc3d062ced5b22c304afc1658710c9acfab9765ba6318c93869b85"
+    },
+    "fticons/raw icons/eye.svg": {
+      "size": 1359,
+      "sha256": "1d3f91a7caa94383f77ff56e5f6242220399bb9cee6e80e3ba8c28bab463493c"
+    },
+    "fticons/raw icons/eyedropper-2.svg": {
+      "size": 2180,
+      "sha256": "8685a2eea1b0d3fe4e9e423ee68f4630558d220a054ca956bf7a549f0d03f55e"
+    },
+    "fticons/raw icons/eyedropper.svg": {
+      "size": 2180,
+      "sha256": "8685a2eea1b0d3fe4e9e423ee68f4630558d220a054ca956bf7a549f0d03f55e"
+    },
+    "fticons/raw icons/fill-color-media-gradient.svg": {
+      "size": 1057,
+      "sha256": "456cc84744801ad2a244d3f8ceeba8c1eff7d6cd87682398ea3afbf7a953ac33"
+    },
+    "fticons/raw icons/format-and-canvas-settings.svg": {
+      "size": 213,
+      "sha256": "28ce2c7605a30ae3af637832d5325848469e2327360f4bbe3686115d18e53fe1"
+    },
+    "fticons/raw icons/freeze-frame.svg": {
+      "size": 814,
+      "sha256": "ce86e3c99e83bcc465cc55acd0b192cc6fbd2a7186d27076c0832eb84e937b97"
+    },
+    "fticons/raw icons/graph.svg": {
+      "size": 6647,
+      "sha256": "6d0751ecfc34ac74fc3793ebeed6223f12877712408e0037a729acbd34f07507"
+    },
+    "fticons/raw icons/grid.svg": {
+      "size": 494,
+      "sha256": "94ad3e79f9ed12c74563c87be2ed14f2c1eb72cf7e05199bdb1517b2a338535f"
+    },
+    "fticons/raw icons/group-layer-s.svg": {
+      "size": 2060,
+      "sha256": "abe2859cb1fe93227d350722fc5c47735df7b4ed2b21b91031636c03521b5e6e"
+    },
+    "fticons/raw icons/heart.svg": {
+      "size": 799,
+      "sha256": "7acbaacf8aaf536923fb34875d46813ecee7d29867c6e5f0b1e60c9360e65489"
+    },
+    "fticons/raw icons/icon-10.svg": {
+      "size": 1612,
+      "sha256": "bdd176b988066a4f318b3774eb118b757709556b801f8096c4ad6a30b3a899c2"
+    },
+    "fticons/raw icons/icon-11.svg": {
+      "size": 685,
+      "sha256": "b8be06fb68743b9ce03b2f3c6041feb5eaaa7a4986e9d5952c04fc2ac7d24523"
+    },
+    "fticons/raw icons/icon-12.svg": {
+      "size": 569,
+      "sha256": "3a2fbb8c4d6c5790dae8471a9f29295b714ae2dab0ce8d6529b3841241ef46c0"
+    },
+    "fticons/raw icons/icon-13.svg": {
+      "size": 675,
+      "sha256": "d12d87a0b8d7e6de0bcac27abdd6011565f1d08e3d6ed61aa193e560c738f9b9"
+    },
+    "fticons/raw icons/icon-14.svg": {
+      "size": 240,
+      "sha256": "f050ab746d10b27717d1474f58eb1559f9fefe72de1c51efea1e224d3fa38a24"
+    },
+    "fticons/raw icons/icon-15.svg": {
+      "size": 1280,
+      "sha256": "7c4ef9406184f8f1769f57508df626a27e168c6d8f1a6536c8e5cf0b4b21f914"
+    },
+    "fticons/raw icons/icon-16.svg": {
+      "size": 1886,
+      "sha256": "71d764e20a6c817e9c2ba4ac9350fc8c2f640fbe937042b3993f6792aaa5a750"
+    },
+    "fticons/raw icons/icon-17.svg": {
+      "size": 706,
+      "sha256": "917bf7da9654c8d6a4c3e27213d66b9e0d4c2fb4ac2d31377b42d5a062e1a490"
+    },
+    "fticons/raw icons/icon-18.svg": {
+      "size": 416,
+      "sha256": "9cb04c529932172cb4afc22674ad827f94f7fe5c6624020e0e1f550280f0117f"
+    },
+    "fticons/raw icons/icon-19.svg": {
+      "size": 184,
+      "sha256": "92f652e25ff8588eacc4e76293043e734e23dde8eb305984850bd1bba0e1f329"
+    },
+    "fticons/raw icons/icon-2.svg": {
+      "size": 5032,
+      "sha256": "26b76260e251f47054fee6ff87851f36bb96968fe6401896897537c04b9badd6"
+    },
+    "fticons/raw icons/icon-20.svg": {
+      "size": 516,
+      "sha256": "989e59748f647614ddda68886e10d983cfb8ea3fc9aff635373c0da6a14c2391"
+    },
+    "fticons/raw icons/icon-21.svg": {
+      "size": 592,
+      "sha256": "8d42500db7e5936a4ac3e64a4399f171b47e2cb082a8c74403fbd0e05a0816ce"
+    },
+    "fticons/raw icons/icon-22.svg": {
+      "size": 677,
+      "sha256": "b923fa954bde9f880c312f26519628e1bff4a7febf209d47dfd9e1c527555ec5"
+    },
+    "fticons/raw icons/icon-23.svg": {
+      "size": 777,
+      "sha256": "0174f362fee76959ff9f03d856c1dd8a4fcd64cc9bc830af1baebb50483604ca"
+    },
+    "fticons/raw icons/icon-24.svg": {
+      "size": 570,
+      "sha256": "0de8bcec20f30f9e2c9b0f32079dc831dd90574b082bbf6857b807d0da441b69"
+    },
+    "fticons/raw icons/icon-25.svg": {
+      "size": 466,
+      "sha256": "3dda1bf890ea4c360bcfcc6aada918854a5ac46afdc7729df2ec40bd96a4c76b"
+    },
+    "fticons/raw icons/icon-26.svg": {
+      "size": 231,
+      "sha256": "95ffe17512c7f27aabe5ee3688cf30a0ddb177c8d2efa70dbb7a89b9f67ef50a"
+    },
+    "fticons/raw icons/icon-27.svg": {
+      "size": 717,
+      "sha256": "164ad8fc3b2faa597fa29500df64f57f4f146d9adcc3713242baf9dd10fb313b"
+    },
+    "fticons/raw icons/icon-28.svg": {
+      "size": 568,
+      "sha256": "8e36bbe2fd685a1bc6193e8f96cf3742b3e413bbf1219482c23eb7caea6f9726"
+    },
+    "fticons/raw icons/icon-29.svg": {
+      "size": 650,
+      "sha256": "451f535ba9616d95cab1419ed3b6f0b14a2e969e50ea4aa8c42fe63a39c6bbd9"
+    },
+    "fticons/raw icons/icon-3.svg": {
+      "size": 352,
+      "sha256": "b1637d10a6a9f7d61972b2bdc2f800e67d9c37300951cf038a6c4a8edd7a7fe1"
+    },
+    "fticons/raw icons/icon-30.svg": {
+      "size": 1031,
+      "sha256": "d5f866c81b866a8752fb7496b8deeac81539bad6b35bad7172bb21dada77ec27"
+    },
+    "fticons/raw icons/icon-31.svg": {
+      "size": 154,
+      "sha256": "d653ac0d5652f22d01d46ca3046074eaaf7d8d411720f9b523e71b02ca845fbd"
+    },
+    "fticons/raw icons/icon-32.svg": {
+      "size": 157,
+      "sha256": "f9ed5c156837e1a3ec13616362070291d123e0b470260e07bba186796fec0df5"
+    },
+    "fticons/raw icons/icon-33.svg": {
+      "size": 307,
+      "sha256": "ff3f38ff13278f98de030a3ac9dac47f44881b73aca8c0e96bba5cf050696e87"
+    },
+    "fticons/raw icons/icon-34.svg": {
+      "size": 1827,
+      "sha256": "191d5aea6195d497a30da4c96b52fc68349ad5c6ca3f70fd64967c33da2bf9fa"
+    },
+    "fticons/raw icons/icon-35.svg": {
+      "size": 4396,
+      "sha256": "6007af1e7f3889c7bfdaa64f5a6048518fec99b1c5f1b3fc8fc5ac84b9dab22e"
+    },
+    "fticons/raw icons/icon-36.svg": {
+      "size": 210,
+      "sha256": "51ed729570e24f06a0733985bcbbe53e265140b6208758e13c8df5e4aeace1c8"
+    },
+    "fticons/raw icons/icon-37.svg": {
+      "size": 900,
+      "sha256": "ce618eabd4cddce855a141452686d70d70edf1ea6c42d44a1b21c431e20667eb"
+    },
+    "fticons/raw icons/icon-38.svg": {
+      "size": 2984,
+      "sha256": "e13505a92caf5a8332fc28022be03a2037caae7301bf97d91391ba3f4931d11a"
+    },
+    "fticons/raw icons/icon-39.svg": {
+      "size": 484,
+      "sha256": "55c321ee691ed6ef630f885e355fb77c3cc4946afed55035aafde4cf0c2c0fa6"
+    },
+    "fticons/raw icons/icon-4.svg": {
+      "size": 1400,
+      "sha256": "44faad35ffb7bdacfd928de5d7dc54061b9bd5c59dac5c1ec434be5a4c44a243"
+    },
+    "fticons/raw icons/icon-40.svg": {
+      "size": 329,
+      "sha256": "a52fd714951914b7ae214ac31f70cefb6dde1cfa1442fd773d75aac31dab2f65"
+    },
+    "fticons/raw icons/icon-41.svg": {
+      "size": 1837,
+      "sha256": "00640db56163e7eba2af86b5ecd255f9cca7ab5c1c03c63a0508775e5bea13e6"
+    },
+    "fticons/raw icons/icon-42.svg": {
+      "size": 812,
+      "sha256": "8f5cbc95c8bead8c48df6e5ec03b478f573ab92f3c0be02e27e342b13b73c129"
+    },
+    "fticons/raw icons/icon-5.svg": {
+      "size": 516,
+      "sha256": "989e59748f647614ddda68886e10d983cfb8ea3fc9aff635373c0da6a14c2391"
+    },
+    "fticons/raw icons/icon-6.svg": {
+      "size": 592,
+      "sha256": "8d42500db7e5936a4ac3e64a4399f171b47e2cb082a8c74403fbd0e05a0816ce"
+    },
+    "fticons/raw icons/icon-7.svg": {
+      "size": 2036,
+      "sha256": "6050c440373a39946a2fda967818bae729eee39a3d627481b516fa41a366609d"
+    },
+    "fticons/raw icons/icon-8.svg": {
+      "size": 1075,
+      "sha256": "b74f3e7a7574532224c029b5214bab0c0dc8f1487ba4f3a25533dbdf53ece970"
+    },
+    "fticons/raw icons/icon-9.svg": {
+      "size": 2255,
+      "sha256": "dc64c9e2b3dd6a384ba6880252212e25c14a1efef71ccbce89339b5425119caa"
+    },
+    "fticons/raw icons/icon.svg": {
+      "size": 516,
+      "sha256": "989e59748f647614ddda68886e10d983cfb8ea3fc9aff635373c0da6a14c2391"
+    },
+    "fticons/raw icons/import-media.svg": {
+      "size": 218,
+      "sha256": "dd57eb0be9c02458b32a5e31b8bde11b1c89f8ebe6e61315331a3fcb46314d1b"
+    },
+    "fticons/raw icons/import-presets-json.svg": {
+      "size": 236,
+      "sha256": "be46be17ed918471ea8530e5990f42b91e8e3f6b19ebc68ecb809df49c93e850"
+    },
+    "fticons/raw icons/keyframe.svg": {
+      "size": 224,
+      "sha256": "cf26ae2d23204459d9464092d51b7ff152753f07dc59190310a4502fcba72d2c"
+    },
+    "fticons/raw icons/label-camera-focus-layer.svg": {
+      "size": 677,
+      "sha256": "970588317c73d205c1ebfbbb5a48a11403c4e10fd04f24aa5364077726838711"
+    },
+    "fticons/raw icons/layer-null.svg": {
+      "size": 280,
+      "sha256": "d7889d785747ec2b4bc6c7b852093f5ede41e8915e2ea3e9f106782601647a3c"
+    },
+    "fticons/raw icons/layer-options.svg": {
+      "size": 777,
+      "sha256": "bf1a40d1b392127a82ffe5917999c543529135bb0e7e22b51c52de783f500b57"
+    },
+    "fticons/raw icons/layer-solid.svg": {
+      "size": 969,
+      "sha256": "e1978a15a41dcba47cdecb5eef6f96252f2bfe232ebad93ee1f4ac82c28c4e5c"
+    },
+    "fticons/raw icons/lightning.svg": {
+      "size": 183,
+      "sha256": "46b2c48e070d7580a5fea34f81a349a97ae3fb698af091336e306a2f343e8e67"
+    },
+    "fticons/raw icons/link-aspect-ratio.svg": {
+      "size": 1552,
+      "sha256": "75dab8d0a87810df06f7ed8e6dccdf74fef50c3da80d883c5e7721da550b572e"
+    },
+    "fticons/raw icons/link-parent-layer.svg": {
+      "size": 1923,
+      "sha256": "29d7dd7d9d853d63f2604ab42e544786c79447e82c168128200a7d0f5f435a83"
+    },
+    "fticons/raw icons/lock-aspect-ratio.svg": {
+      "size": 1551,
+      "sha256": "0eeebf884bce6e6cdb02a5789ad7f14cb2c6cc6dc46e20ba14cf59141bf653fc"
+    },
+    "fticons/raw icons/magnet.svg": {
+      "size": 1068,
+      "sha256": "d98d8ed585096e823c146b96e003da73d802ca397ece2a14b569f2f62ec344e0"
+    },
+    "fticons/raw icons/media-category.svg": {
+      "size": 1446,
+      "sha256": "fe79f762ebe6f22472aa0a8ecbdaa4028c7fd58282f890fde76c443ccf37d42d"
+    },
+    "fticons/raw icons/media-fill.svg": {
+      "size": 344,
+      "sha256": "9134a896e6058587fc7325b649ce6aca42f60975088b09c95f8a6ef7f24d2a18"
+    },
+    "fticons/raw icons/more-2.svg": {
+      "size": 777,
+      "sha256": "1eeb3a5c2c219d150d06bdd178d3507e62bcd5fc576064b9369fdaf216c57c26"
+    },
+    "fticons/raw icons/more-options.svg": {
+      "size": 777,
+      "sha256": "1eeb3a5c2c219d150d06bdd178d3507e62bcd5fc576064b9369fdaf216c57c26"
+    },
+    "fticons/raw icons/more.svg": {
+      "size": 609,
+      "sha256": "3e6e2ad63ffc4a5caeb0e9106c911a5dbf6731c008dee8350ee3b245cc963303"
+    },
+    "fticons/raw icons/move-layer.svg": {
+      "size": 2797,
+      "sha256": "f80687b13fd108fbacb79b98110c4c67fb77fbca73af11876a5ca0f4501ddf93"
+    },
+    "fticons/raw icons/move-left.svg": {
+      "size": 2021,
+      "sha256": "ec07d915964049c97f61a5e17a16aa259c1b855d997a5be6c34a8b6fabc15fac"
+    },
+    "fticons/raw icons/move-right.svg": {
+      "size": 2117,
+      "sha256": "61362779aba954147f794dc65c1e35a6764dd001853fc6fdab5af15830e6a82f"
+    },
+    "fticons/raw icons/next.svg": {
+      "size": 168,
+      "sha256": "3533b95898a07d3566f4ddc70c97d98872a7380604c8661b4fb3fac743ffa303"
+    },
+    "fticons/raw icons/no-fill-transparent.svg": {
+      "size": 1361,
+      "sha256": "5e517d5f77c929e32f227c0a94cda44232cba7a13319c4c8e89dc6cccf2e9e2e"
+    },
+    "fticons/raw icons/no-fill.svg": {
+      "size": 1047,
+      "sha256": "8d3927f66e5dec2f45d1c18e7ccef4a73fdf769581b88ec0f40088c7209e8425"
+    },
+    "fticons/raw icons/null.svg": {
+      "size": 1886,
+      "sha256": "71d764e20a6c817e9c2ba4ac9350fc8c2f640fbe937042b3993f6792aaa5a750"
+    },
+    "fticons/raw icons/open-changelog-md.svg": {
+      "size": 564,
+      "sha256": "82aa81acac5c95de08f6a3810eb2355df3f249d22aac6a4a53c839a7feb3ecf9"
+    },
+    "fticons/raw icons/open-timeline.svg": {
+      "size": 1380,
+      "sha256": "8a999ac8d05385bb87277abf50e0130a45df325ad978593cb68e4487257c5a05"
+    },
+    "fticons/raw icons/palette.svg": {
+      "size": 4607,
+      "sha256": "6c181e9e6cadea0d53d1726b5e80a6254deb4bc6cc1063cf47bed252565dafe6"
+    },
+    "fticons/raw icons/paste.svg": {
+      "size": 940,
+      "sha256": "1e03ebb0770b7ad8e1f5760e28dda92a493c0edc65408c80e0a8c2beb95aaed0"
+    },
+    "fticons/raw icons/pause.svg": {
+      "size": 189,
+      "sha256": "52f18d37840aeedf6bb16c4890b804356a79c352e51e806d98c0ae16a355b1e6"
+    },
+    "fticons/raw icons/pickwhip.svg": {
+      "size": 2950,
+      "sha256": "6fc930f0e037cefb29bdffad336d50ab9d5c25aa1a7b8b04db9c336295b8350b"
+    },
+    "fticons/raw icons/play-pause.svg": {
+      "size": 165,
+      "sha256": "94b583cd25271af3de13ba73d763af8fe820e13bc14061d16de1dfafc92e31f3"
+    },
+    "fticons/raw icons/play.svg": {
+      "size": 165,
+      "sha256": "94b583cd25271af3de13ba73d763af8fe820e13bc14061d16de1dfafc92e31f3"
+    },
+    "fticons/raw icons/plus.svg": {
+      "size": 802,
+      "sha256": "e56daf36aa6630e7645fcf4c6189c4328399fadc7143cf1a0abb77b8cbd751c1"
+    },
+    "fticons/raw icons/polygon.svg": {
+      "size": 220,
+      "sha256": "1385b2c8ecf8f3edadc7e0656ce194c712f9ee1b1684ea56a01ff636d3ffba62"
+    },
+    "fticons/raw icons/preset-gallery-2.svg": {
+      "size": 491,
+      "sha256": "86f878006bafb0c23a006b5c65d68029477ab207c6a837609d1373a196e5575c"
+    },
+    "fticons/raw icons/preset-gallery.svg": {
+      "size": 491,
+      "sha256": "86f878006bafb0c23a006b5c65d68029477ab207c6a837609d1373a196e5575c"
+    },
+    "fticons/raw icons/previous.svg": {
+      "size": 168,
+      "sha256": "3af59e9ea2435a3c16cab4a43a657cbeed18a28804f626922b376c83fcb210fd"
+    },
+    "fticons/raw icons/qris-arrow-icon.svg": {
+      "size": 213,
+      "sha256": "28ce2c7605a30ae3af637832d5325848469e2327360f4bbe3686115d18e53fe1"
+    },
+    "fticons/raw icons/quick-effects-palette.svg": {
+      "size": 1023,
+      "sha256": "81ebb994b8bfe51cebd0ac5162f06f8cdfcf7664e383397c1192622f297d9497"
+    },
+    "fticons/raw icons/rectangle.svg": {
+      "size": 554,
+      "sha256": "57095e1e3512f00e725be19d7aa20eeb5af1afdef6927654fae690a4c5ef79fd"
+    },
+    "fticons/raw icons/redo.svg": {
+      "size": 648,
+      "sha256": "176f204881245d1d02affd9cdf476ccdadf02a4544ec939c2b6303d8118851df"
+    },
+    "fticons/raw icons/reload-fishtools.svg": {
+      "size": 824,
+      "sha256": "e5f78dcc16f053bf5b6e27cc10cc83f05c3b6743caa56cd5afa3262b6ead7987"
+    },
+    "fticons/raw icons/reorder.svg": {
+      "size": 1169,
+      "sha256": "b4256547138b963487926b799a01ed4c22eb56dab0336d97c80e4c68b1ff4bf3"
+    },
+    "fticons/raw icons/reverse.svg": {
+      "size": 2140,
+      "sha256": "f4863e0634eb589ce03ed725b46d970bb2a0b99a5741a37ddd6d0604a490a5b1"
+    },
+    "fticons/raw icons/rotate.svg": {
+      "size": 438,
+      "sha256": "30ce25a61811ff06f2811b6ae4d05dbfc038498cf355c853a3d5933f742356e9"
+    },
+    "fticons/raw icons/rotation.svg": {
+      "size": 438,
+      "sha256": "30ce25a61811ff06f2811b6ae4d05dbfc038498cf355c853a3d5933f742356e9"
+    },
+    "fticons/raw icons/save-graph-preset.svg": {
+      "size": 777,
+      "sha256": "0174f362fee76959ff9f03d856c1dd8a4fcd64cc9bc830af1baebb50483604ca"
+    },
+    "fticons/raw icons/save-preset-2.svg": {
+      "size": 832,
+      "sha256": "dfdb71f7c22f0ecab55353c292ce646d3f07fdf7c62b9f2817f544100b2829df"
+    },
+    "fticons/raw icons/save-preset.svg": {
+      "size": 832,
+      "sha256": "dfdb71f7c22f0ecab55353c292ce646d3f07fdf7c62b9f2817f544100b2829df"
+    },
+    "fticons/raw icons/scale.svg": {
+      "size": 822,
+      "sha256": "b1ed6d2443833dde4987a26d26c7c1f8e548224bed3bdb423017b3dfb4959a0c"
+    },
+    "fticons/raw icons/select-animation-target.svg": {
+      "size": 167,
+      "sha256": "ffe978a5c79bb560189dc0af037310dfaab05a6c81157e0c6c0719e8995bf728"
+    },
+    "fticons/raw icons/select-font-family.svg": {
+      "size": 167,
+      "sha256": "ffe978a5c79bb560189dc0af037310dfaab05a6c81157e0c6c0719e8995bf728"
+    },
+    "fticons/raw icons/shape.svg": {
+      "size": 231,
+      "sha256": "95ffe17512c7f27aabe5ee3688cf30a0ddb177c8d2efa70dbb7a89b9f67ef50a"
+    },
+    "fticons/raw icons/share-project-link-dialog.svg": {
+      "size": 862,
+      "sha256": "5b22bbcaad68f8012fbf2667c19b6bdd75b19db90ed34bc8b3356a51de2ee5ed"
+    },
+    "fticons/raw icons/skew.svg": {
+      "size": 2350,
+      "sha256": "148c7728b36e04424417212a1a1566619cb7f68b031bb478b84b55bd19ddf8d1"
+    },
+    "fticons/raw icons/slide-left-to-export.svg": {
+      "size": 234,
+      "sha256": "b5f4b71c7adec1029dc37dd8db78173e87d6cb8e20f5544d4a91976ec95f417c"
+    },
+    "fticons/raw icons/snap-to-grid.svg": {
+      "size": 1922,
+      "sha256": "21a5feebe211fd764d39b54b55aae99aba47606d5c3faae50a94e67f9e60fc71"
+    },
+    "fticons/raw icons/source-time.svg": {
+      "size": 1428,
+      "sha256": "9756df6d4433d1d53421791565b6482ae5de64928268b61a977ed5ee3ca80d73"
+    },
+    "fticons/raw icons/speed.svg": {
+      "size": 4013,
+      "sha256": "0d7bbf33ab6dbec6897399f5970080a3b9f7af07fe183e5c09839bedaeae6fcb"
+    },
+    "fticons/raw icons/style.svg": {
+      "size": 1015,
+      "sha256": "58ccc6695bee3a06a55940802bb5743a8e3fb63a673f123b0d349383894e75b9"
+    },
+    "fticons/raw icons/switch-to-mobile-view.svg": {
+      "size": 573,
+      "sha256": "d499ad3d4125683ddb32bfa583947c1a77f283ebf0425a1b679e63794dbefb0b"
+    },
+    "fticons/raw icons/template-editor.svg": {
+      "size": 1445,
+      "sha256": "94cf7291117aa6a5b743d7646626d07b8551a351f86b93979fa5b17c944ca7bf"
+    },
+    "fticons/raw icons/text.svg": {
+      "size": 160,
+      "sha256": "ec375d3037dfc6ee9e8fa951c685b9992e944446ebc75da25dacd64fecc6188d"
+    },
+    "fticons/raw icons/toggle-controls.svg": {
+      "size": 165,
+      "sha256": "94b583cd25271af3de13ba73d763af8fe820e13bc14061d16de1dfafc92e31f3"
+    },
+    "fticons/raw icons/toggle-effect.svg": {
+      "size": 1359,
+      "sha256": "1d3f91a7caa94383f77ff56e5f6242220399bb9cee6e80e3ba8c28bab463493c"
+    },
+    "fticons/raw icons/toggle-speed-draft-mode.svg": {
+      "size": 189,
+      "sha256": "15b74186f4a1b559af22dffe1f840937cf4d0ef5c0a00a65fb1cbbcee7bf363d"
+    },
+    "fticons/raw icons/track-adjustment.svg": {
+      "size": 706,
+      "sha256": "917bf7da9654c8d6a4c3e27213d66b9e0d4c2fb4ac2d31377b42d5a062e1a490"
+    },
+    "fticons/raw icons/track-audio.svg": {
+      "size": 416,
+      "sha256": "9cb04c529932172cb4afc22674ad827f94f7fe5c6624020e0e1f550280f0117f"
+    },
+    "fticons/raw icons/track-video.svg": {
+      "size": 545,
+      "sha256": "80884953dec984cf4d0ea9a24e3b9f3f49ebe073b5cdc20adbe08e923bbe8067"
+    },
+    "fticons/raw icons/transform-layer.svg": {
+      "size": 329,
+      "sha256": "a52fd714951914b7ae214ac31f70cefb6dde1cfa1442fd773d75aac31dab2f65"
+    },
+    "fticons/raw icons/triangle.svg": {
+      "size": 454,
+      "sha256": "afed83a9c9ef6131f6605ee629cc771b3c783264cfc6a880bbce474aaf181678"
+    },
+    "fticons/raw icons/undo.svg": {
+      "size": 590,
+      "sha256": "bcca37442f09980dd34c977cb292e79f1fc335cd5e6069c7aef0e69012f37ee9"
+    },
+    "fticons/raw icons/vector-close-path.svg": {
+      "size": 268,
+      "sha256": "f2ee8f6c240a0dfb561210163650cb09ec489c5879896c8d2007b2530d486a6d"
+    },
+    "fticons/raw icons/vector-curve.svg": {
+      "size": 485,
+      "sha256": "b54332042beb44e2819ab9194a25ac2d0bf1143d6cf4c7de79e7d7f027db1a4c"
+    },
+    "fticons/raw icons/vector-point.svg": {
+      "size": 292,
+      "sha256": "6acbf41f83295de98cf347d7bdbbebed1fc79c8279c465344d88446c076a3168"
+    },
+    "fticons/raw icons/vector-stroke.svg": {
+      "size": 411,
+      "sha256": "e1855c12758512489f0fdd385f62a1836c8b48711126dc2aabea2f61aa9c2aca"
+    },
+    "fticons/raw icons/video-settings.svg": {
+      "size": 162,
+      "sha256": "d3772244bef23bd6a07650cdbb0acc24a4d851e98c29da1961b90c2d792746fb"
+    },
+    "fticons/raw icons/view-qr-code.svg": {
+      "size": 407,
+      "sha256": "7d5fbd6ba335fc4b2cdce0c7c984151916aee817b9aa519f94fc7bd7040a3820"
+    },
+    "fticons/raw icons/volume-2.svg": {
+      "size": 812,
+      "sha256": "8f5cbc95c8bead8c48df6e5ec03b478f573ab92f3c0be02e27e342b13b73c129"
+    },
+    "fticons/raw icons/volume-mute.svg": {
+      "size": 1733,
+      "sha256": "bc862c0ae675955c89826f22005a57d7fc3ff55df1dcbbff68862b99946d921a"
+    },
+    "fticons/raw icons/volume.svg": {
+      "size": 1771,
+      "sha256": "3413e7f08b11fda27a7b4557b7c67527ab9545c646244a930b3b664bc3fd9f9f"
+    },
+    "fticons/raw icons/z-position-ruler.svg": {
+      "size": 2519,
+      "sha256": "268ceb571cde992d0c3a8070f3886eb8394f0e8752606b45b12d5cba72f0782f"
+    },
+    "fticons/specimen.html": {
+      "size": 18241,
+      "sha256": "02d0db9daa7dd55512675a56e0be8014b56eab1caba1a0797d202819a00f988c"
+    },
+    "fticons/test.ttf": {
+      "size": 26764,
+      "sha256": "d2f4ef7326067ca5e1634f1615fef5a318ac7cb8014c634042dcbdf97e776da4"
+    },
+    "fticons/test.woff2": {
+      "size": 12272,
+      "sha256": "f23a0873bda636939b4cf715cf6097ba81883ebfa7c5a8e04049eb9ae3617c47"
+    },
+    "fticons/test_fixed.woff2": {
+      "size": 11188,
+      "sha256": "75d4872c9e4e68cb92606129cd64cf14458af2e630015869f5e60da6d5e368d3"
+    },
+    "fticons/test_recalc_false.woff2": {
+      "size": 10776,
+      "sha256": "ba0fe173146ce7287beeb0f9d0fff1de54dd7266ccbaf7faa7f11f8475c53181"
+    },
+    "fticons/test_resaved.woff2": {
+      "size": 10804,
+      "sha256": "19aaf60f8c2238c12d8a49646d7c0e093a74be01eb631d054928759c2314ed91"
+    },
+    "fticons/test_untouched.woff2": {
+      "size": 10780,
+      "sha256": "546b9e8bf59ac1b2443dbc15c6f66d5311e864bffdb9e12fde13080e6828c7f2"
+    },
+    "vendor/ffmpeg/ffmpeg-core.js": {
+      "size": 86313,
+      "sha256": "84423d4c31d3ac8771eb7a0a1636fb524e17e85c15155c3927bae9bee3884257"
+    },
+    "vendor/ffmpeg/ffmpeg-core.wasm": {
+      "size": 24383038,
+      "sha256": "68b094c2dd90d813d5c0894c991499e297479e6c2dcd7e9b4940b5a22eb62701"
+    },
+    "vendor/ffmpeg/ffmpeg-core.worker.js": {
+      "size": 53,
+      "sha256": "4825e9f353857db0fad79bf423b2cf4cde8427b9ee33fc97a3d1fccbc80f7b98"
+    },
+    "vendor/ffmpeg/ffmpeg.min.js": {
+      "size": 22608,
+      "sha256": "730dd094a34e7f3ea7bd2bb9c6784ff140a5eca097da82e0303d74647e8ae5f2"
+    },
+    "vendor/jszip.min.js": {
+      "size": 97630,
+      "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+    },
+    "vendor/lamejs/lame.min.js": {
+      "size": 156043,
+      "sha256": "15d285e2587b3bdbfd18a68de6ce07cc074f7480a82c3815da2dc1c348ec6df4"
+    },
+    "vendor/mp4-muxer.js": {
+      "size": 73618,
+      "sha256": "2c6294c300d57356794e66666440b5733a0ac497b9af8aff1ac3bd784000fc22"
+    },
+    "vendor/qrcode.min.js": {
+      "size": 19927,
+      "sha256": "c541ef06327885a8415bca8df6071e14189b4855336def4f36db54bde8484f36"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+require_relative '../node_modules/react-native-macos/scripts/react_native_pods'
+require_relative '../node_modules/@react-native-community/cli-platform-apple/native_modules'
+
+platform :osx, '11.0'
+install! 'cocoapods', :deterministic_uuids => false
+
+target 'FishToolsStudio' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  pod 'react-native-webview', :path => '../node_modules/react-native-webview'
+  pod 'react-native-async-storage', :path => '../node_modules/@react-native-async-storage/async-storage'
+
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['ARCHS'] = '$(ARCHS_STANDARD)' # arm64 + x86_64 Universal
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
+      end
+    end
+  end
+end
