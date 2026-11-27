@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.2
+
+- Fix performa Windows WebView2 yang sempat fallback ke software rendering (menghapus flag `--enable-zero-copy`, `--force_high_performance_gpu`, dan `--ignore-gpu-blocklist` di `tauri.conf.json`).
+- Sinkronisasi versi otomatis dengan `openfishtools/Studio` (`v0.7.2`).
+
 ## v0.7.1
 
 - Rebuild Standalone app dengan **Tauri v2** (Windows x64 & Android arm64-v8a).
