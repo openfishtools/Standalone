@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="18"
+        android:translateY="18"
+        android:scaleX="0.5625"
+        android:scaleY="0.5625">
+        <!-- Fish tail (monochrome silhouette for Android 13+ Themed Icons) -->
+        <group
+            android:translateX="29.418"
+            android:translateY="27.75">
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.78"
+                android:pathData="M0.482,6.375 C-1.005,3.4 1.12,0 4.52,0 L21.307,0 C24.707,0 26.832,3.4 25.345,6.375 L17.907,20.825 C16.632,23.163 16.632,26.138 17.907,28.475 L25.345,42.925 C26.832,45.9 24.707,49.3 21.307,49.3 L4.52,49.3 C1.12,49.3 -1.005,45.9 0.482,42.925 L7.92,28.475 C9.195,26.138 9.195,23.163 7.92,20.825 L0.482,6.375 Z" />
+        </group>
+        <!-- Diamond body -->
+        <group
+            android:translateX="74.95"
+            android:translateY="19.944"
+            android:rotation="45">
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M11.05,0 L34.85,0 C40.953,0 45.9,4.947 45.9,11.05 L45.9,34.85 C45.9,40.953 40.953,45.9 34.85,45.9 L11.05,45.9 C4.947,45.9 0,40.953 0,34.85 L0,11.05 C0,4.947 4.947,0 11.05,0 Z" />
+        </group>
+        <!-- STUDIO pill -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M38,91.5 L90,91.5 A8.5,8.5 0 0,1 98.5,100 A8.5,8.5 0 0,1 90,108.5 L38,108.5 A8.5,8.5 0 0,1 29.5,100 A8.5,8.5 0 0,1 38,91.5 Z" />
+    </group>
+</vector>
