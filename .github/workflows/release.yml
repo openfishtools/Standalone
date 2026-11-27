@@ -72,14 +72,15 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK 27
+      - name: Install Android NDK 27 & SDK Packages
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "ndk;27.2.12479018" "platforms;android-37.0" "build-tools;36.0.0" || sdkmanager "ndk;27.2.12479018" "platforms;android-37" "build-tools;36.0.0" || sdkmanager "ndk;27.2.12479018" "build-tools;36.0.0"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMAN="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMAN" --licenses > /dev/null || true
+          "$SDKMAN" "ndk;27.2.12479018" "platforms;android-37.0" "build-tools;36.0.0" || "$SDKMAN" "ndk;27.2.12479018" "platforms;android-37" "build-tools;36.0.0" || "$SDKMAN" "ndk;27.2.12479018" "build-tools;36.0.0"
+          echo "NDK_HOME=$SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - name: Setup Rust + Android Target
         uses: dtolnay/rust-toolchain@stable
