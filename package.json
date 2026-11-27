@@ -1,6 +1,6 @@
 {
   "name": "openfishtools-standalone",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "OpenFishTools Studio Standalone Desktop & Mobile App (Tauri v2)",
   "scripts": {
