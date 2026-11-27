@@ -1,0 +1,76 @@
+name: Sync Version with Studio
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  repository_dispatch:
+    types: [studio-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-bump:
+    name: Check Studio Version & Bump
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.sync.outputs.should_release }}
+      tag: ${{ steps.sync.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Compare Studio & Standalone Versions
+        id: sync
+        run: |
+          STUDIO_VER=$(curl -fsSL https://raw.githubusercontent.com/openfishtools/Studio/main/version.json | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8')); console.log((d.version||'').trim())")
+          LOCAL_VER=$(node -e "console.log(require('./package.json').version)")
+          echo "Studio version: ${STUDIO_VER}, Standalone version: ${LOCAL_VER}"
+          if [ -z "$STUDIO_VER" ] || [ "$STUDIO_VER" = "$LOCAL_VER" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          node scripts/sync-version.js "$STUDIO_VER"
+
+          TAG="v${STUDIO_VER}"
+          if ! grep -q "^## ${TAG}$" CHANGELOG.md; then
+            TMP_FILE=$(mktemp)
+            {
+              echo "# Changelog"
+              echo ""
+              echo "## ${TAG}"
+              echo ""
+              echo "- Sinkronisasi versi dengan FishTools Studio ${TAG}."
+              echo ""
+              tail -n +3 CHANGELOG.md
+            } > "$TMP_FILE"
+            mv "$TMP_FILE" CHANGELOG.md
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json CHANGELOG.md
+          git commit -m "chore(release): sync version to ${TAG} (from openfishtools/Studio)"
+          git push origin HEAD:main
+          git tag -f -a "$TAG" -m "$TAG"
+          git push -f origin "$TAG"
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+  trigger-release:
+    needs: check-and-bump
+    if: needs.check-and-bump.outputs.should_release == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.check-and-bump.outputs.tag }}
+    secrets: inherit

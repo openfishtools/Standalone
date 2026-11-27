@@ -11,6 +11,7 @@
     "build:win:debug": "node scripts/build.js win debug",
     "build:android": "node scripts/build.js android release",
     "build:android:debug": "node scripts/build.js android debug",
+    "sync:version": "node scripts/sync-version.js",
     "android:init": "tauri android init"
   },
   "devDependencies": {

@@ -1,0 +1,72 @@
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+
+const ROOT = path.resolve(__dirname, '..');
+const LOCAL_STUDIO_VER = path.resolve(ROOT, '..', 'Studio', 'version.json');
+const REMOTE_STUDIO_VER = 'https://raw.githubusercontent.com/openfishtools/Studio/main/version.json';
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, { headers: { 'User-Agent': 'FishTools-Standalone-Sync' } }, (res) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} from ${url}`));
+          return;
+        }
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(body));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      })
+      .on('error', reject);
+  });
+}
+
+async function resolveTargetVersion() {
+  const cliVer = (process.argv[2] || '').trim().replace(/^v/i, '');
+  if (/^\d+\.\d+\.\d+$/.test(cliVer)) return cliVer;
+
+  if (fs.existsSync(LOCAL_STUDIO_VER)) {
+    const local = JSON.parse(fs.readFileSync(LOCAL_STUDIO_VER, 'utf8'));
+    if (local && local.version) return String(local.version).trim().replace(/^v/i, '');
+  }
+
+  const remote = await fetchJson(REMOTE_STUDIO_VER);
+  if (remote && remote.version) return String(remote.version).trim().replace(/^v/i, '');
+  throw new Error('Could not determine Studio version');
+}
+
+async function main() {
+  const ver = await resolveTargetVersion();
+  const pkgPath = path.join(ROOT, 'package.json');
+  const cargoPath = path.join(ROOT, 'src-tauri', 'Cargo.toml');
+  const tauriPath = path.join(ROOT, 'src-tauri', 'tauri.conf.json');
+
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  const prev = pkg.version;
+  pkg.version = ver;
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+
+  const cargo = fs.readFileSync(cargoPath, 'utf8');
+  const nextCargo = cargo.replace(/^version\s*=\s*"[^"]+"/m, `version = "${ver}"`);
+  fs.writeFileSync(cargoPath, nextCargo, 'utf8');
+
+  const tauri = JSON.parse(fs.readFileSync(tauriPath, 'utf8'));
+  tauri.version = ver;
+  fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + '\n', 'utf8');
+
+  console.log(`[sync-version] Standalone synced: ${prev} -> ${ver}`);
+}
+
+main().catch((err) => {
+  console.error('[sync-version] Failed:', err.message || err);
+  process.exit(1);
+});
