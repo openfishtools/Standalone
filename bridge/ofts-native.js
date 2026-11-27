@@ -560,7 +560,11 @@
       if (!item || !item.id) return item;
       const id = String(item.id);
       let binBytes = null;
-      if (item.blob instanceof Blob && item.blob.size > 0) {
+      let isModelBin = false;
+      if (item.type === '3d_model' && item.modelData && typeof item.modelData === 'object') {
+        binBytes = packModelDataBin(item.modelData);
+        isModelBin = Boolean(binBytes && binBytes.byteLength > 0);
+      } else if (item.blob instanceof Blob && item.blob.size > 0) {
         binBytes = new Uint8Array(await item.blob.arrayBuffer());
       } else if (item.buffer instanceof ArrayBuffer) {
         binBytes = new Uint8Array(item.buffer);
@@ -586,7 +590,11 @@
       delete meta.buffer;
       delete meta.thumbBlob;
       delete meta.thumbBuffer;
-      if (binBytes && binBytes.byteLength > 0) {
+      if (isModelBin) {
+        delete meta.modelData;
+        meta.size = binBytes.byteLength;
+        meta._hasModelBin = true;
+      } else if (binBytes && binBytes.byteLength > 0) {
         meta.size = binBytes.byteLength;
         meta.dataUrl = nativeStorage.mediaUrl(id);
         meta._storedOnDisk = true;
@@ -598,7 +606,13 @@
       const raw = await invoke('storage_get_media_meta', { id: String(id) });
       if (!raw) return null;
       const meta = JSON.parse(raw);
-      if (meta._storedOnDisk) {
+      if (meta._hasModelBin && hydrateBlob !== false) {
+        try {
+          const buf = await invoke('storage_read_media_bin', { id: String(meta.id), kind: 'bin' });
+          const unpacked = unpackModelDataBin(buf);
+          if (unpacked) meta.modelData = unpacked;
+        } catch (_) {}
+      } else if (meta._storedOnDisk) {
         meta.dataUrl = nativeStorage.mediaUrl(meta.id);
         if (hydrateBlob !== false) {
           try {
@@ -624,7 +638,13 @@
         .filter(Boolean);
       for (let i = 0; i < items.length; i++) {
         const m = items[i];
-        if (m._storedOnDisk) {
+        if (m._hasModelBin && hydrateBlobs) {
+          try {
+            const buf = await invoke('storage_read_media_bin', { id: String(m.id), kind: 'bin' });
+            const unpacked = unpackModelDataBin(buf);
+            if (unpacked) m.modelData = unpacked;
+          } catch (_) {}
+        } else if (m._storedOnDisk) {
           m.dataUrl = nativeStorage.mediaUrl(m.id);
           if (hydrateBlobs) {
             try {
@@ -646,6 +666,72 @@
       return invoke('storage_clear_all_media');
     },
   };
+
+  function packModelDataBin(md) {
+    try {
+      const typedKeys = ['positions', 'normals', 'uvs', 'basePositions', 'baseNormals', 'skinIndices', 'skinWeights'];
+      const headerObj = Object.assign({}, md);
+      const chunks = [];
+      const descriptors = [];
+      let binLen = 0;
+      for (let i = 0; i < typedKeys.length; i++) {
+        const k = typedKeys[i];
+        const v = md[k];
+        if (v && ArrayBuffer.isView(v) && v.byteLength > 0) {
+          const typeName = v.constructor && v.constructor.name ? v.constructor.name : 'Float32Array';
+          const pad = (4 - (binLen % 4)) % 4;
+          binLen += pad;
+          descriptors.push({ key: k, type: typeName, offset: binLen, length: v.length, byteLength: v.byteLength });
+          chunks.push({ pad: pad, view: new Uint8Array(v.buffer, v.byteOffset, v.byteLength) });
+          binLen += v.byteLength;
+          delete headerObj[k];
+        }
+      }
+      headerObj._typedArrays = descriptors;
+      const headerBytes = new TextEncoder().encode(JSON.stringify(headerObj));
+      const headerPad = (4 - (headerBytes.byteLength % 4)) % 4;
+      const dataStart = 8 + headerBytes.byteLength + headerPad;
+      const out = new Uint8Array(dataStart + binLen);
+      out[0] = 0x4f; out[1] = 0x46; out[2] = 0x33; out[3] = 0x44; // "OF3D"
+      new DataView(out.buffer).setUint32(4, headerBytes.byteLength, true);
+      out.set(headerBytes, 8);
+      let cursor = dataStart;
+      for (let i = 0; i < chunks.length; i++) {
+        cursor += chunks[i].pad;
+        out.set(chunks[i].view, cursor);
+        cursor += chunks[i].view.byteLength;
+      }
+      return out;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function unpackModelDataBin(rawBuf) {
+    try {
+      const u8 = rawBuf instanceof Uint8Array
+        ? rawBuf
+        : (rawBuf instanceof ArrayBuffer ? new Uint8Array(rawBuf) : new Uint8Array(rawBuf.buffer, rawBuf.byteOffset, rawBuf.byteLength));
+      if (u8.byteLength < 8 || u8[0] !== 0x4f || u8[1] !== 0x46 || u8[2] !== 0x33 || u8[3] !== 0x44) return null;
+      const headerLen = new DataView(u8.buffer, u8.byteOffset, u8.byteLength).getUint32(4, true);
+      const headerPad = (4 - (headerLen % 4)) % 4;
+      const dataStart = 8 + headerLen + headerPad;
+      if (dataStart > u8.byteLength) return null;
+      const headerObj = JSON.parse(new TextDecoder().decode(u8.subarray(8, 8 + headerLen)));
+      const descs = Array.isArray(headerObj._typedArrays) ? headerObj._typedArrays : [];
+      delete headerObj._typedArrays;
+      const ctorMap = { Float32Array, Float64Array, Uint16Array, Uint32Array, Int16Array, Int32Array, Uint8Array };
+      for (let i = 0; i < descs.length; i++) {
+        const d = descs[i];
+        const Ctor = ctorMap[d.type] || Float32Array;
+        const slice = u8.slice(dataStart + d.offset, dataStart + d.offset + d.byteLength);
+        headerObj[d.key] = new Ctor(slice.buffer, 0, d.length);
+      }
+      return headerObj;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // 10. Native FFmpeg Bridge (Windows: native ffmpeg.exe; Android: ffmpeg-kit-min-gpl JNI)
   let ffmpegLogger = null;
@@ -813,5 +899,101 @@
     openUpdater: function () {
       return invoke('open_updater_ui');
     },
+    checkAppUpdate: checkAppUpdate,
   };
+
+  // 12. Lightweight Standalone App Update Checker (GitHub Releases API — Option A)
+  function compareSemver(a, b) {
+    const pa = String(a || '').replace(/^v/i, '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const pb = String(b || '').replace(/^v/i, '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const len = Math.max(pa.length, pb.length, 3);
+    for (let i = 0; i < len; i++) {
+      const va = pa[i] || 0;
+      const vb = pb[i] || 0;
+      if (va !== vb) return va > vb ? 1 : -1;
+    }
+    return 0;
+  }
+
+  function showAppUpdateBanner(latestVer, downloadUrl, releaseUrl) {
+    if (document.getElementById('ofts-app-update-banner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'ofts-app-update-banner';
+    bar.style.cssText =
+      'position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;align-items:center;gap:10px;' +
+      'padding:10px 12px;border-radius:10px;background:var(--bg-panel);color:var(--text-primary);' +
+      'border:1px solid var(--border-panel);font-size:12px;font-weight:500;';
+    const label = document.createElement('span');
+    label.textContent = 'App Update ' + latestVer + ' tersedia';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Download';
+    btn.style.cssText =
+      'padding:5px 10px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;' +
+      'background:var(--color-primary);color:var(--bg-canvas);';
+    btn.addEventListener('click', function () {
+      try { window.open(downloadUrl || releaseUrl, '_blank', 'noopener'); } catch (_) {}
+    });
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '×';
+    closeBtn.setAttribute('aria-label', 'Dismiss update');
+    closeBtn.style.cssText =
+      'padding:2px 6px;border-radius:6px;border:none;cursor:pointer;font-size:14px;line-height:1;' +
+      'background:transparent;color:var(--text-muted);';
+    closeBtn.addEventListener('click', function () {
+      try { sessionStorage.setItem('ofts_app_update_dismissed', latestVer); } catch (_) {}
+      bar.remove();
+    });
+    bar.appendChild(label);
+    bar.appendChild(btn);
+    bar.appendChild(closeBtn);
+    document.body.appendChild(bar);
+  }
+
+  async function checkAppUpdate(force) {
+    try {
+      const info = await invoke('app_info').catch(function () { return null; });
+      const currentVer = (info && info.version) ? String(info.version) : '';
+      if (!currentVer) return null;
+      const resp = await fetch('https://api.github.com/repos/openfishtools/Standalone/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!resp || !resp.ok) return null;
+      const rel = await resp.json();
+      const latestTag = String((rel && (rel.tag_name || rel.name)) || '').trim();
+      if (!latestTag || compareSemver(latestTag, currentVer) <= 0) {
+        return { updateAvailable: false, currentVersion: currentVer, latestVersion: latestTag || currentVer };
+      }
+      const assets = Array.isArray(rel.assets) ? rel.assets : [];
+      let asset = null;
+      if (detectedPlatform === 'android') {
+        asset = assets.find(function (a) { return a && /\.apk$/i.test(a.name || ''); });
+      } else {
+        asset = assets.find(function (a) { return a && /setup\.exe$/i.test(a.name || ''); }) ||
+                assets.find(function (a) { return a && /\.exe$/i.test(a.name || ''); });
+      }
+      const downloadUrl = (asset && asset.browser_download_url) || rel.html_url || '';
+      const dismissed = (function () {
+        try { return sessionStorage.getItem('ofts_app_update_dismissed'); } catch (_) { return null; }
+      })();
+      if (force || dismissed !== latestTag) {
+        showAppUpdateBanner(latestTag, downloadUrl, rel.html_url || '');
+      }
+      return {
+        updateAvailable: true,
+        currentVersion: currentVer,
+        latestVersion: latestTag,
+        downloadUrl: downloadUrl,
+        releaseUrl: rel.html_url || '',
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Auto-check once on Dashboard startup (non-blocking, silent when offline)
+  if (typeof window !== 'undefined' && /\/(index\.html)?$/i.test(window.location.pathname || '')) {
+    setTimeout(function () { checkAppUpdate(false); }, 4000);
+  }
 })();

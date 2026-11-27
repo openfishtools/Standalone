@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.4
+
+- **Binary 3D Model Storage (`OF3D`) di `bridge/ofts-native.js`**: Memisahkan `modelData` 3D (`.zip`/`.fbx`/`.obj`) dari `.meta.json` ke file biner kompak `{id}.bin` (`packModelDataBin` / `unpackModelDataBin`) sehingga tidak lagi memicu blank hitam/hang WebView akibat `JSON.stringify`/`JSON.parse` jutaan angka geometri.
+- **Standalone App Update Checker (`bridge/ofts-native.js`)**: Menambahkan `window.OFTSNative.checkAppUpdate()` & auto-check ringan ke GitHub Releases saat Dashboard dibuka, dengan banner flat bertema aplikasi dan tombol download otomatis sesuai platform (`setup.exe` untuk Windows / `.apk` untuk Android).
+
 ## v0.7.2
 
 - Fix performa Windows WebView2 yang sempat fallback ke software rendering (menghapus flag `--enable-zero-copy`, `--force_high_performance_gpu`, dan `--ignore-gpu-blocklist` di `tauri.conf.json`).
