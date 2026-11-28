@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.5
+
+- Sinkronisasi versi dengan FishTools Studio v0.7.5.
+
 ## v0.7.4
 
 - **Binary 3D Model Storage (`OF3D`) di `bridge/ofts-native.js`**: Memisahkan `modelData` 3D (`.zip`/`.fbx`/`.obj`) dari `.meta.json` ke file biner kompak `{id}.bin` (`packModelDataBin` / `unpackModelDataBin`) sehingga tidak lagi memicu blank hitam/hang WebView akibat `JSON.stringify`/`JSON.parse` jutaan angka geometri.
