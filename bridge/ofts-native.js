@@ -924,7 +924,7 @@
       'padding:10px 12px;border-radius:10px;background:var(--bg-panel);color:var(--text-primary);' +
       'border:1px solid var(--border-panel);font-size:12px;font-weight:500;';
     const label = document.createElement('span');
-    label.textContent = 'App Update ' + latestVer + ' tersedia';
+    label.textContent = 'App Update ' + latestVer + ' available';
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = 'Download';
